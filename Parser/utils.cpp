@@ -1,5 +1,7 @@
 #include "utils.hpp"
 
+#include <cctype>
+
 void SyntaxError() {
 
 }
@@ -85,4 +87,44 @@ void RightStrip(std::string&, char symb = ' ') {
 void Strip(std::string& src, char symb) {
 	LeftStrip(src, symb);
 	RightStrip(src, symb);
+}
+
+
+std::string_view Strip(const std::string_view src) {
+	if (src.empty()) {
+		return src;
+	}
+	size_t left_pos = 0;
+	size_t right_pos = src.size();
+	while (left_pos < src.size() && std::isspace(src[left_pos])) {
+		++left_pos;
+	}
+	while (right_pos > 0 && std::isspace(src[right_pos - 1])) {
+		--right_pos;
+	}
+	return std::string_view(&src[left_pos], right_pos - left_pos);
+}
+
+
+std::string_view LeftStrip(const std::string_view src) {
+	if (src.empty()) {
+		return src;
+	}
+	size_t left_pos = 0;
+	while (left_pos < src.size() && std::isspace(src[left_pos])) {
+		++left_pos;
+	}
+	return std::string_view(&src[left_pos], src.size() - left_pos);
+}
+
+
+std::string_view RightStrip(const std::string_view src, char symb) {
+	if (src.empty()) {
+		return src;
+	}
+	size_t right_pos = src.size();
+	while (right_pos > 0 && std::isspace(src[right_pos - 1])) {
+		--right_pos;
+	}
+	return std::string_view(&src[0], right_pos);
 }

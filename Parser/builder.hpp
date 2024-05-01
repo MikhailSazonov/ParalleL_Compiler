@@ -1,19 +1,20 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 #include "../TypeSystem/expression.hpp"
 #include "../TypeSystem/type.hpp"
 
 const std::string TYPE_DELIMETER = "->"
-const std::string EXPR_DELIMETER = "->"
+const std::string EXPR_DELIMETER = " "
 
 void SyntaxError();
 
 Expression BuildExpression(const std::string&);
 
-std::unique_ptr<Type> BuildType(const std::string&);
+std::unique_ptr<Type> BuildType(const std::string_view);
 
-std::vector<std::string> ParseExpression(const std::string&);
+std::pair<size_t, size_t> GetNextTokenPos(const std::string_view);
 
-std::vector<std::string> ParseType(const std::string&);
+bool IsName(const std::string_view);

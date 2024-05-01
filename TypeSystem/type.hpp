@@ -37,13 +37,15 @@ struct Var : public Type {
 };
 
 
-// struct List : public Var {
-
-// };
-
-
 struct Arrow : public Type {
 	Arrow() : code(TermType.ARROW) {}
+
+	Arrow(const Type& left, const Type& right) 
+		:
+	  code(TermType.ARROW)
+	, left(left)
+	, right(right)
+	 {}
 
 	std::unique_ptr<Type> left;
 	std::unique_ptr<Type> right;

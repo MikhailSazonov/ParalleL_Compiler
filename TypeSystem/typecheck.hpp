@@ -22,14 +22,14 @@ void ValueMismatchError() {
 }
 
 
-Type CheckTerm(const std::unordered_map<std::string, Type>& typesTable, const Expression& expr) {
+std::shared_ptr<Type> CheckTerm(const std::unordered_map<std::string, std::shared_ptr<Type>>& typesTable, const Expression& expr) {
 	if (expr.code == ExpressionType.VAR) {
 		const VarExpression& varExp = (const VarExpression&)expr;
 		return typesTable[varExp.name];
 	}
 	const AppExpression& appExp = (const AppExpression&)expr;
-	CheckTerm(appExp.fun);
-	CheckTerm(appExp.arg);
+	CheckTerm(typesTable, appExp.fun);
+	CheckTerm(typesTable, appExp.arg);
 	Arrow* left = dynamic_cast<Arrow*>(&typesTable[appExp.fun]);
 	const Type& right = typesTable[appExp.arg] 
 	if (left == nullptr) {
