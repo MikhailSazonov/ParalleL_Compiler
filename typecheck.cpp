@@ -5,13 +5,11 @@
 #include "definitions.hpp"
 
 std::shared_ptr<Type> GetTermType(const Def::TypeTable& typesTable, const Expression& expr) {
-    if (expr.type == ExpressionType::CONST) {
-        // TODO: proper type
+    if (expr.type == ExpressionType::LITERAL) {
         const auto& constExp = (const ConstExpression&)expr;
         return constExp.correspondingType;
     }
     if (expr.type == ExpressionType::VAR) {
-        // TODO: proper type
         const auto& varExp = (const VarExpression&)expr;
         if (!typesTable.contains(varExp.name)) {
             throw UndefinedVariableError{};
@@ -33,8 +31,7 @@ std::shared_ptr<Type> GetTermType(const Def::TypeTable& typesTable, const Expres
 
 void CheckType(Def::TypeTable& typesTable, const std::string& varName,
                size_t argsN, Type* varType, const Expression& expr) {
-    // TODO: type existence check
-    if (argsN == 0 && varType->type == TermType::POD) {
+    if (expr.type != ExpressionType::APP && argsN == 0 && varType->type == TermType::POD) {
         typesTable[varName] = std::make_shared<Pod>(dynamic_cast<const Pod*>(varType)->typeName);
         return;
     }

@@ -1,98 +1,15 @@
 #include "utils.hpp"
 
 #include <cctype>
-
 #include <algorithm>
+#include <unordered_set>
 
 #include "definitions.hpp"
+#include "errors.hpp"
 
 void SyntaxError() {
 
 }
-
-//std::vector<std::string> Split(const std::string& src, const std::string& delim) {
-//    size_t first_idx = 0;
-//    size_t last_idx = 0;
-//    std::vector<std::string> result;
-//    while (last_idx != src.size()) {
-//        first_idx = last_idx;
-//        last_idx = src.find(last_idx, delim);
-//        result.push_back(src.substr(first_idx, last_idx));
-//    }
-//    return result;
-//}
-
-
-//std::vector<std::string> Tokenize(const std::string& src, const std::string& delim) {
-//    std::vector<std::string> result;
-//    size_t left_idx = 0;
-//    size_t right_idx = 0;
-//    for (size_t idx = 0; idx < src.size();) {
-//        auto brackets_idcs = FindBrackets(src, idx);
-//        std::string bracketed;
-//        if (brackets_idcs) {
-//            std::string bracketed = src.substr(brackets_idcs->first + 1, brackets_idcs->second - 1);
-//            Strip(bracketed);
-//            left_idx = idx;
-//            right_idx = brackets_idcs->first - 1;
-//            idx = brackets_idcs->second + 1;
-//        }
-//        std::vector<std::string> splittedBetween = Split(src.substr(left_idx, right_idx), delim);
-//        for (auto& token : splittedBetween) {
-//            Strip(token);
-//            if (!token.empty()) {
-//                result.push_back(token);
-//            }
-//        }
-//        if (!bracketed.empty()) {
-//            result.push_back(token);
-//        }
-//    }
-//}
-
-
-//std::optional<std::pair<size_t, size_t>> FindBrackets(const std::string& src, size_t startPos) {
-//    size_t left_bracket = src.find(startPos, '(');
-//    if (left_bracket == std::string::npos) {
-//        return std::nullopt;
-//    }
-//    size_t balance = 1;
-//    for (size_t right_bracket = left_bracket + 1; i < src.size(); ++i) {
-//        if (src[right_bracket] == '(') {
-//            balance += 1;
-//        } else if (src[right_bracket] == ')') {
-//            if (balance == 0) {
-//                SyntaxError();
-//            }
-//            balance -= 1;
-//        }
-//        if (balance == 0) {
-//            return std::make_pair(left_bracket, right_bracket);
-//        }
-//    }
-//    SyntaxError();
-//    return std::nullopt;
-//}
-
-
-//void LeftStrip(std::string&, char symb = ' ') {
-//    while (!src.empty() && src.front() == symb) {
-//        src.erase(src.begin());
-//    }
-//}
-//
-//void RightStrip(std::string&, char symb = ' ') {
-//    while (!src.empty() && src.back() == symb) {
-//        src.pop_back();
-//    }
-//}
-
-
-//void Strip(std::string& src, char symb) {
-//    LeftStrip(src, symb);
-//    RightStrip(src, symb);
-//}
-
 
 std::string_view Strip(const std::string_view src) {
     if (src.empty()) {
@@ -165,7 +82,7 @@ bool IsPositiveNum(const std::string_view src, bool allowZero) {
 }
 
 bool IsNum(const std::string_view src) {
-    return IsPositiveNum(src) || src.size() > 1 &&
+    return src == "0" || IsPositiveNum(src) || src.size() > 1 &&
         src[0] == '-' && IsPositiveNum({&src[1], src.size() - 1});
 }
 
@@ -193,5 +110,62 @@ bool IsString(const std::string_view src) {
 
 
 bool IsMangledName(const std::string_view src) {
-    return !src.empty() && IsName({&src[0], src.size() - 1}) && src.back() == Def::MANGLING_SYMBOL;
+    return !src.empty() && IsPositiveNum({&src[0], src.size() - 1}, true) && src.back() == Def::MANGLING_SYMBOL;
+}
+
+
+bool IsOperator(const std::string_view c) {
+    static const std::unordered_set<std::string> ops = {"+", "-", "*", "/", "%", "<", ">",
+                                                        "<=", ">="};
+    return ops.contains(std::string(c));
+}
+
+
+std::pair<size_t, size_t> GetNextTokenPos(const std::string_view view) {
+    if (view[0] == '(') {
+        size_t i = 1;
+        size_t balance = i;
+        for (; i < view.size() && balance > 0; ++i) {
+            if (view[i] == '(') {
+                balance++;
+            } else if (view[i] == ')') {
+                balance--;
+            }
+        }
+        if (i == view.size()) {
+            SyntaxError();
+        }
+        i--;
+        return std::make_pair(1, i - 1);
+    }
+    return std::make_pair(0, std::min(view.find(' '), view.size()));
+}
+
+
+std::pair<size_t, size_t> GetLastTokenPos(const std::string_view view) {
+    if (view.back() == ')') {
+        size_t i = 1;
+        size_t balance = i;
+        for (; i < view.size() && balance > 0; ++i) {
+            if (view[view.size() - i - 1] == '(') {
+                balance--;
+            } else if (view[view.size() - i - 1] == ')') {
+                balance++;
+            }
+        }
+        if (i == view.size()) {
+            SyntaxError();
+        }
+        return std::make_pair(view.size() - i + 1, i - 2);
+    }
+    if (view.back() == '\"') {
+        auto next_quote = view.rfind('\"', view.size() - 2);
+        if (next_quote == std::string_view::npos) {
+            throw UnexpectedSymbol{};
+        }
+        return std::make_pair(next_quote, view.size() - next_quote);
+    }
+    auto delimeter_pos = view.rfind(' ');
+    return std::make_pair(delimeter_pos == std::string_view::npos ? 0 : delimeter_pos + 1,
+                          view.size() - (delimeter_pos + 1));
 }

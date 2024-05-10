@@ -25,47 +25,47 @@ void assert2(Expression& expr1, Expression& expr2) {
 //    // testing
 //    {
 //        std::string a = "f";
-//        auto type = BuildExpression(a.data());
+//        auto type = BuildExpression(a.data(), {});
 //        auto type2 = VarExpression("f");
 //        assert2(*type, type2);
 //    }
 //    {
 //        std::string a = "f g";
-//        auto type = BuildExpression(a.data());
+//        auto type = BuildExpression(a.data(), {});
 //        auto type2 = AppExpression(new VarExpression("f"), new VarExpression("g"));
 //        assert2(*type, type2);
 //    }
 //    {
 //        std::string a = "f g h";
-//        auto type = BuildExpression(a.data());
-//        auto type2 = AppExpression(new VarExpression("f"),
-//                                   new AppExpression(new VarExpression("g"), new VarExpression("h")));
+//        auto type = BuildExpression(a.data(), {});
+//        auto type2 = AppExpression(new AppExpression(new VarExpression("f"), new VarExpression("g")),
+//                                   new VarExpression("h"));
 //        assert2(*type, type2);
 //    }
 //    {
 //        std::string a = "f (g h)";
-//        auto type = BuildExpression(a.data());
+//        auto type = BuildExpression(a.data(), {});
 //        auto type2 = AppExpression(new VarExpression("f"),
 //                                   new AppExpression(new VarExpression("g"), new VarExpression("h")));
 //        assert2(*type, type2);
 //    }
 //    {
 //        std::string a = "(f g) h";
-//        auto type = BuildExpression(a.data());
+//        auto type = BuildExpression(a.data(), {});
 //        auto type2 = AppExpression(new AppExpression(new VarExpression("f"), new VarExpression("g")),
 //                                   new VarExpression("h"));
 //        assert2(*type, type2);
 //    }
 //    {
 //        std::string a = "(f g) (h k)";
-//        auto type = BuildExpression(a.data());
+//        auto type = BuildExpression(a.data(), {});
 //        auto type2 = AppExpression(new AppExpression(new VarExpression("f"), new VarExpression("g")),
 //                                   new AppExpression(new VarExpression("h"), new VarExpression("k")));
 //        assert2(*type, type2);
 //    }
 //    {
 //        std::string a = "(f (g h)) (f g)";
-//        auto type = BuildExpression(a.data());
+//        auto type = BuildExpression(a.data(), {});
 //        auto type2 = AppExpression(new AppExpression(new VarExpression("f"),
 //                                                     new AppExpression(new VarExpression("g"), new VarExpression("h"))),
 //                                   new AppExpression(new VarExpression("f"), new VarExpression("g")));
@@ -73,7 +73,7 @@ void assert2(Expression& expr1, Expression& expr2) {
 //    }
 //    {
 //        std::string a = "((f g) h) (f g)";
-//        auto type = BuildExpression(a.data());
+//        auto type = BuildExpression(a.data(), {});
 //        auto type2 = AppExpression(new AppExpression(new AppExpression(new VarExpression("f"), new VarExpression("g")),
 //                                                     new VarExpression("h")),
 //                                   new AppExpression(new VarExpression("f"), new VarExpression("g")));
@@ -81,20 +81,44 @@ void assert2(Expression& expr1, Expression& expr2) {
 //    }
 //    {
 //        std::string a = "(f)";
-//        auto type = BuildExpression(a.data());
+//        auto type = BuildExpression(a.data(), {});
 //        auto type2 = VarExpression("f");
 //        assert2(*type, type2);
 //    }
 //    {
 //        std::string a = "(f g)";
-//        auto type = BuildExpression(a.data());
+//        auto type = BuildExpression(a.data(), {});
 //        auto type2 = AppExpression(new VarExpression("f"), new VarExpression("g"));
 //        assert2(*type, type2);
 //    }
 //    {
 //        std::string a = "(f ((g)))";
-//        auto type = BuildExpression(a.data());
+//        auto type = BuildExpression(a.data(), {});
 //        auto type2 = AppExpression(new VarExpression("f"), new VarExpression("g"));
+//        assert2(*type, type2);
+//    }
+//    {
+//        std::string a = "x + y";
+//        auto type = BuildExpression(a.data(), {});
+//        auto type2 = AppExpression(new AppExpression(new VarExpression("add"), new VarExpression("x")),
+//                                   new VarExpression("y"));
+//        assert2(*type, type2);
+//    }
+//    {
+//        std::string a = "x / y";
+//        auto type = BuildExpression(a.data(), {});
+//        auto type2 = AppExpression(new AppExpression(new VarExpression("div"), new VarExpression("x")),
+//                                   new VarExpression("y"));
+//        assert2(*type, type2);
+//    }
+//    {
+//        std::string a = "x + y - z";
+//        auto type = BuildExpression(a.data(), {});
+//        auto type2 = AppExpression(new AppExpression(new VarExpression("sub"),
+//                                                     new AppExpression(new AppExpression(new VarExpression("add"),
+//                                                                                         new VarExpression("x")),
+//                                                                       new VarExpression("y"))),
+//                                   new VarExpression("z"));
 //        assert2(*type, type2);
 //    }
 //}

@@ -9,7 +9,7 @@
 enum class ExpressionType {
     VAR,
     APP,
-    CONST
+    LITERAL
 };
 
 struct Expression {
@@ -32,7 +32,7 @@ struct ConstExpression : public Expression {
 
     ConstExpression(std::string value, const std::string& type)
         :
-      Expression(ExpressionType::CONST)
+      Expression(ExpressionType::LITERAL)
     , value(std::move(value))
     , correspondingType(new Pod(type))
         {}

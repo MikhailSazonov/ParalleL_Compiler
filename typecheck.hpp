@@ -14,3 +14,5 @@ std::shared_ptr<Type> GetTermType(const Def::TypeTable&,
 void CheckType(Def::TypeTable&, const std::string&,
                size_t, Type*, const Expression&);
 
+
+void CheckCondition(const Expression&);

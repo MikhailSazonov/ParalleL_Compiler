@@ -9,7 +9,7 @@ class ICodegen {
     public:
         virtual ~ICodegen() = default;
 
-        virtual void Generate(const Def::FuncTable&,
-                              const Def::TypeTable&,
+        virtual void Generate(Def::FuncTable&,
+                              Def::TypeTable&,
                               bool) = 0;
 };

@@ -8,6 +8,7 @@
 #include "../type.hpp"
 #include "../funcdef.hpp"
 #include "../expression.hpp"
+#include "../definitions.hpp"
 
 namespace BaseLib {
     const std::pair<std::string, std::string> VOID_TYPE = {"Void", "void"};
@@ -35,7 +36,7 @@ namespace BaseLib {
 
     struct NativeFun {
         std::string nativeDef;
-        std::unique_ptr<Type> plType;
+        std::shared_ptr<Type> plType;
         size_t argNo;
     };
 
@@ -45,4 +46,8 @@ namespace BaseLib {
     };
 
     std::optional<NativeDesc> GetNative(const std::string&);
+
+    void LoadBaseTypes(Def::TypeTable&);
+
+    std::string GetBaseCode();
 }

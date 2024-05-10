@@ -10,6 +10,8 @@
 struct FuncDesc {
     std::string retType;
     std::string args;
+    std::string nameCpp;
+    std::vector<std::string> argVect;
 };
 
 struct CppNatives {
@@ -19,13 +21,17 @@ struct CppNatives {
 
 class CppCodegen : public ICodegen {
     public:
-        void Generate(const Def::FuncTable&,
-                      const Def::TypeTable&,
+        void Generate(Def::FuncTable&,
+                      Def::TypeTable&,
                       bool);
 
         void GenerateTypedef(const std::string&, Type*, size_t);
 
-        std::string CreateTypedef(Type*, const std::string&, std::vector<std::string>&);
+        void GenerateTypedef(Type*);
+
+        bool GeneratePodTypedef(Type*);
+
+        std::string CreateTypedef(Type*);
 
         typedef std::vector<std::pair<Type*, std::pair<std::string, std::string>>> TypedefList;
         typedef std::unordered_map<std::string, FuncDesc> CppFuncList;
@@ -44,15 +50,18 @@ class CppCodegen : public ICodegen {
 
         std::string GenerateTypedefForCppFunc(const std::string&, Type* type, size_t);
 
-        void GenerateFunc(const std::string&, const Def::FuncTable&, const Def::TypeTable&);
+        void GenerateFunc(const std::string&, Def::FuncTable&, Def::TypeTable&);
 
-        std::string GenerateExpr(Expression*, const Def::FuncTable&,
-                                 const Def::TypeTable&, bool insertBracket = false);
+        std::string GenerateExpr(Expression*, Def::FuncTable&,
+                                 Def::TypeTable&,
+                                 std::vector<std::string>&,
+                                 const size_t);
 
         void Print(std::ofstream&);
 
     private:
-        TypedefList typedefs;
+        TypedefList typedefsFuncs;
+        TypedefList typedefsPods;
         FuncList funcList;
         FuncListOrdered funcsOrdered;
         CppFuncList cppFuncList;

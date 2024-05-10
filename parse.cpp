@@ -10,7 +10,7 @@
 #include <iostream>
 
 int Parse(Def::TypeTable & typeTable, Def::FuncTable& defTable, const std::string& fileName) {
-    if (!fileName.ends_with(".pl")) {
+    if (!fileName.ends_with(Def::FILE_EXT)) {
         throw FileWrongFormat{};
     }
     std::ifstream file(fileName.c_str());
@@ -69,10 +69,14 @@ void Analyze(Def::TypeTable& typeTable, Def::FuncTable& defTable, const std::str
         if (next_token != "=") {
             throw UnexpectedSymbol{};
         }
-        std::string_view expr(&line[idx]);
+        size_t whereKeyword = line.find(Def::WHERE_KEYWORD);
+        std::string_view expr(&line[idx], whereKeyword == std::string::npos ?
+                    line.size() - idx :
+                    whereKeyword - idx);
         CheckExprSyntax(Strip(expr));
         auto typedExpr = BuildExpression(expr, argsMapping);
-        if (typedExpr->type == ExpressionType::CONST) {
+        // support syntactic sugar : x = 5 (no type presented)
+        if (typedExpr->type == ExpressionType::LITERAL && !typeTable.contains(std::string(name))) {
             if (defTable.contains(std::string(name))) {
                 throw DoubleDefinition{};
             }
@@ -81,7 +85,17 @@ void Analyze(Def::TypeTable& typeTable, Def::FuncTable& defTable, const std::str
         } else {
             CheckType(typeTable, std::string(name), currentArgN, typeTable[std::string(name)].get(), *typedExpr);
         }
-        defTable[std::string(name)].push_back({{}, std::move(typedExpr), currentArgN});
+        std::unique_ptr<Expression> cond;
+        if (whereKeyword != std::string::npos) {
+            cond = BuildExpression({&line[whereKeyword + Def::WHERE_KEYWORD.size()]}, argsMapping);
+            if (*GetTermType(typeTable, *cond) != Pod("Bool")) {
+                throw TypeMismatchError{};
+            }
+        }
+        if (!defTable[std::string(name)].empty() && defTable[std::string(name)].back().cond == nullptr) {
+            throw DefaultAlreadyDeclared{};
+        }
+        defTable[std::string(name)].push_back({std::move(cond), std::move(typedExpr), currentArgN});
         return;
     }
     throw UnexpectedSymbol{};

@@ -27,6 +27,13 @@ class TypeMismatchError : public ParalleLCompilerError {
         }
 };
 
+class DefaultAlreadyDeclared : public ParalleLCompilerError {
+    public:
+        const char *what() const noexcept {
+            return "Default execution already declared.";
+        }
+};
+
 class IsNotFuncError : public ParalleLCompilerError {
     public:
         const char *what() const noexcept {
