@@ -6,6 +6,7 @@
 
 #include "type.hpp"
 #include "funcdef.hpp"
+#include "annotate.hpp"
 
 namespace Def {
     const std::string MAIN_NAME = "main";
@@ -17,6 +18,9 @@ namespace Def {
 
     const std::string WHERE_KEYWORD = "where";
 
+    const std::string ANNOTATE_KEYWORD = "annotate";
+
     typedef std::unordered_map<std::string, std::shared_ptr<Type>> TypeTable;
     typedef std::unordered_map<std::string, std::vector<FuncDef>> FuncTable;
+    typedef std::unordered_map<std::string, Annotation> AnnTable;
 }

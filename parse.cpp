@@ -9,7 +9,10 @@
 #include <fstream>
 #include <iostream>
 
-int Parse(Def::TypeTable & typeTable, Def::FuncTable& defTable, const std::string& fileName) {
+int Parse(Def::TypeTable & typeTable,
+          Def::FuncTable& defTable,
+          Def::AnnTable& annTable,
+          const std::string& fileName) {
     if (!fileName.ends_with(Def::FILE_EXT)) {
         throw FileWrongFormat{};
     }
@@ -21,7 +24,7 @@ int Parse(Def::TypeTable & typeTable, Def::FuncTable& defTable, const std::strin
     size_t lineNo = 1;
     while (std::getline(file, line)) {
         try {
-            Analyze(typeTable, defTable, line);
+            Analyze(typeTable, defTable, annTable, line);
             ++lineNo;
         } catch (const ParalleLCompilerError& er) {
             std::cerr << "Error on line " << lineNo << ": " << er.what() << '\n';
@@ -34,7 +37,10 @@ int Parse(Def::TypeTable & typeTable, Def::FuncTable& defTable, const std::strin
     return 0;
 }
 
-void Analyze(Def::TypeTable& typeTable, Def::FuncTable& defTable, const std::string& line) {
+void Analyze(Def::TypeTable& typeTable,
+             Def::FuncTable& defTable,
+             Def::AnnTable& annTable,
+             const std::string& line) {
     if (line.empty() || line.starts_with("%%")) {
         return;
     }
@@ -42,6 +48,10 @@ void Analyze(Def::TypeTable& typeTable, Def::FuncTable& defTable, const std::str
     auto name = Strip(GetToken(line, idx));
     if (!IsName(name)) {
         throw ImproperName{};
+    }
+    if (name == Def::ANNOTATE_KEYWORD) {
+        AddAnnotation(annTable, {&line[idx]});
+        return;
     }
     for (; idx < line.size() && std::isspace(line[idx]); ++idx) {}
     if (idx == line.size()) {
@@ -186,4 +196,32 @@ std::string_view GetToken(const std::string_view view, size_t& pos) {
     size_t prev_pos = pos;
     pos = view.find(' ', prev_pos) + 1;
     return {&view[prev_pos], pos - prev_pos - 1};
+}
+
+
+void AddAnnotation(Def::AnnTable& annTable, const std::string_view src) {
+    size_t idx = 0;
+    size_t prev_idx = idx;
+    std::vector<std::string> annotations;
+    std::string annotName;
+    while ((idx = src.find(' ', idx)) != std::string_view::npos) {
+        std::string_view token(&src[prev_idx], idx - prev_idx);
+        if (annotName.empty()) {
+            annotName = std::string(token);
+        } else {
+            std::string_view token_stripped(&token[0], token.size() - 1);
+            if (!IsPositiveNum(token_stripped)) {
+                throw UnexpectedSymbol{};
+            }
+            annotations.emplace_back(token_stripped);
+        }
+        idx++;
+        prev_idx = idx;
+    }
+    annotations.emplace_back(&src[prev_idx]);
+    annotations.back().pop_back();
+    if (annotName.empty() || annotations.empty()) {
+        throw UnexpectedEndOfString{};
+    }
+    annTable[annotName] = {annotations};
 }

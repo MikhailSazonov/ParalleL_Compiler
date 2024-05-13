@@ -9,9 +9,11 @@
 #include "funcdef.hpp"
 #include "definitions.hpp"
 
-void Analyze(Def::TypeTable&, Def::FuncTable&, const std::string&);
+void Analyze(Def::TypeTable&, Def::FuncTable&, Def::AnnTable&, const std::string&);
 
-int Parse(Def::TypeTable&, Def::FuncTable&, const std::string&);
+int Parse(Def::TypeTable&, Def::FuncTable&, Def::AnnTable&, const std::string&);
+
+void AddAnnotation(Def::AnnTable&, const std::string_view);
 
 void CheckTypeSyntax(const std::string_view);
 

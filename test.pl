@@ -1,10 +1,9 @@
-Id : Int -> Int
-Id x = x
+annotate Pure3! 1! 1! 1!
 
-Hui : Int -> (Int -> Int)
-Hui x = Id
+Foo : (Int -> Int) -> Int -> Int -> Int
+Foo f x y = (f x) + (f y)
 
-Arc : (Int -> (Int -> Int)) -> Void
+Arc : ((Int -> Int) -> Int -> Int -> Int) -> Void
 Arc f = print "Hello world"
 
-main = Arc Hui
+main = Arc Foo

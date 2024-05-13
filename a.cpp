@@ -42,8 +42,8 @@ struct Func {
         return fn->Call(std::move(arg));
     }
 
-    auto& Eval() {
-        return *this;
+    auto&& Eval() {
+        return std::move(*this);
     }
 
     template <typename F, size_t idx, typename... Args>
@@ -89,20 +89,22 @@ typedef int Int;
 typedef std::string String;
 typedef Func<Int, Func<Void, Int>> BIntIntB;
 
+typedef Func<BIntIntB, Func<Int, Func<Int, Func<Void, Int>>>> BBIntIntBBIntBIntIntBBB;
+
 typedef Func<Int, Func<Int, Func<Void, Int>>> BIntBIntIntBB;
 
-typedef Func<BIntBIntIntBB, Func<Void, Void>> BBIntBIntIntBBVoidB;
+typedef Func<BBIntIntBBIntBIntIntBBB, Func<Void, Void>> BBBIntIntBBIntBIntIntBBBVoidB;
 
 typedef Func<String, Func<Void, Void>> BStringVoidB;
 
-Int Id (std::tuple<Int>& args) {
-	return std::move(std::get<0>(args));
+int add (std::tuple<Int, Int>& args) {
+    return std::get<0>(args) + std::get<1>(args);
 }
 
 
-BIntIntB Hui (std::tuple<Int>& args) {
-	Data<Int, Int> data0{.fun = &Id};
-	return BIntIntB{&data0};
+Int Foo (std::tuple<BIntIntB, Int, Int>& args) {
+	Data<Int, Int, Int> data0{.fun = &add};
+	return ((BIntBIntIntBB{&data0}).Eval((std::move(std::get<0>(args))).Eval(std::move(std::get<1>(args))).Eval()).Eval()).Eval((std::move(std::get<0>(args))).Eval(std::move(std::get<2>(args))).Eval()).Eval();
 }
 
 
@@ -111,16 +113,16 @@ void print (std::tuple<String>& args) {
 }
 
 
-Void Arc (std::tuple<BIntBIntIntBB>& args) {
+Void Arc (std::tuple<BBIntIntBBIntBIntIntBBB>& args) {
 	Data<Void, String> data0{.fun = &print};
 	(BStringVoidB{&data0}).Eval("Hello world").Eval();
 }
 
 
 int main() {
-	Data<BIntIntB, Int> data0{.fun = &Hui};
-	Data<Void, BIntBIntIntBB> data1{.fun = &Arc};
-	(BBIntBIntIntBBVoidB{&data1}).Eval(BIntBIntIntBB{&data0}).Eval();
+	Data<Int, BIntIntB, Int, Int> data0{.fun = &Foo};
+	Data<Void, BBIntIntBBIntBIntIntBBB> data1{.fun = &Arc};
+	(BBBIntIntBBIntBIntIntBBBVoidB{&data1}).Eval(BBIntIntBBIntBIntIntBBB{&data0}).Eval();
 }
 
 
