@@ -11,7 +11,7 @@
 #include "../definitions.hpp"
 
 namespace BaseLib {
-    const std::pair<std::string, std::string> VOID_TYPE = {"Void", "void"};
+    const std::pair<std::string, std::string> VOID_TYPE = {"Void", "Unit"};
     const std::pair<std::string, std::string> BOOL_TYPE = {"Bool", "bool"};
     const std::pair<std::string, std::string> INT_TYPE = {"Int", "int"};
     const std::pair<std::string, std::string> CHAR_TYPE = {"Char", "char"};
@@ -49,5 +49,19 @@ namespace BaseLib {
 
     void LoadBaseTypes(Def::TypeTable&);
 
-    std::string GetBaseCode();
+    std::string GetBaseCode(std::unordered_set<std::string>&);
+
+    std::string GetMTCode(std::unordered_set<std::string>&);
+
+    std::string GetMTPreludeCode(const std::string&, const std::string&);
+
+    std::string GetDataCode(const std::string&, const std::string&, const std::string&);
+
+    std::string GetFuncSTCode(const std::string&, const std::string&);
+
+    std::string GetFuncMTCode(const std::string&, const std::string&);
+
+    std::string GetEvalMTCode(const std::string&, const std::string&);
+
+    std::string GetMTCodaCode(const std::string&, const std::string&);
 }

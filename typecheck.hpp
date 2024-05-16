@@ -8,11 +8,15 @@
 #include "definitions.hpp"
 
 std::shared_ptr<Type> GetTermType(const Def::TypeTable&,
-                                  const Expression&);
+                                  const Expression&,
+                                  const AnnotatedExpression&);
+
+void CheckAnnotatedType(Def::TypeTable&, const std::string&,
+                        size_t, Type*, const AnnotatedExpression&);
 
 
 void CheckType(Def::TypeTable&, const std::string&,
-               size_t, Type*, const Expression&);
+               size_t, Type*, const Expression&, const AnnotatedExpression&);
 
 
 void CheckCondition(const Expression&);

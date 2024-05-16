@@ -9,7 +9,7 @@
 #include <fstream>
 #include <iostream>
 
-int Parse(Def::TypeTable & typeTable,
+int Parse(Def::TypeTable& typeTable,
           Def::FuncTable& defTable,
           Def::AnnTable& annTable,
           const std::string& fileName) {
@@ -86,19 +86,21 @@ void Analyze(Def::TypeTable& typeTable,
         CheckExprSyntax(Strip(expr));
         auto typedExpr = BuildExpression(expr, argsMapping);
         // support syntactic sugar : x = 5 (no type presented)
-        if (typedExpr->type == ExpressionType::LITERAL && !typeTable.contains(std::string(name))) {
+        if ((*typedExpr)[(size_t)-1].back()->type == ExpressionType::LITERAL &&
+        !typeTable.contains(std::string(name))) {
             if (defTable.contains(std::string(name))) {
                 throw DoubleDefinition{};
             }
-            auto* constant = dynamic_cast<ConstExpression*>(typedExpr.get());
+            auto* constant = dynamic_cast<ConstExpression*>((*typedExpr)[(size_t)-1].back().get());
             typeTable[std::string(name)] = constant->correspondingType;
         } else {
-            CheckType(typeTable, std::string(name), currentArgN, typeTable[std::string(name)].get(), *typedExpr);
+            CheckAnnotatedType(typeTable, std::string(name), currentArgN,
+                      typeTable[std::string(name)].get(), *typedExpr);
         }
-        std::unique_ptr<Expression> cond;
+        std::unique_ptr<AnnotatedExpression> cond;
         if (whereKeyword != std::string::npos) {
             cond = BuildExpression({&line[whereKeyword + Def::WHERE_KEYWORD.size()]}, argsMapping);
-            if (*GetTermType(typeTable, *cond) != Pod("Bool")) {
+            if (*GetTermType(typeTable, *(*cond)[(size_t)-1].back(), *cond) != Pod("Bool")) {
                 throw TypeMismatchError{};
             }
         }

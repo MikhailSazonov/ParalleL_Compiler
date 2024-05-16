@@ -4,6 +4,8 @@
 #include <utility>
 #include <vector>
 #include <memory>
+#include <map>
+
 #include "type.hpp"
 
 enum class ExpressionType {
@@ -38,10 +40,6 @@ struct ConstExpression : public Expression {
         {}
 };
 
-ConstExpression* CreateConstant(const std::string_view);
-
-bool IsConstant(const std::string_view);
-
 struct AppExpression : Expression {
     std::unique_ptr<Expression> fun;
     std::unique_ptr<Expression> arg;
@@ -55,3 +53,11 @@ struct AppExpression : Expression {
         , arg(arg)
     {}
 };
+
+typedef std::map<size_t, std::vector<std::unique_ptr<Expression>>> AnnotatedExpression;
+
+ConstExpression* CreateConstant(const std::string_view);
+
+bool IsConstant(const std::string_view);
+
+bool IsAnnotation(const std::string_view);

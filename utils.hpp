@@ -42,8 +42,12 @@ bool IsString(const std::string_view);
 
 bool IsMangledName(const std::string_view);
 
+bool IsAnnotatedName(const std::string_view src);
+
 bool IsOperator(const std::string_view);
 
 std::pair<size_t, size_t> GetNextTokenPos(const std::string_view);
 
 std::pair<size_t, size_t> GetLastTokenPos(const std::string_view);
+
+std::string GenerateAnnotatedName(size_t, size_t);

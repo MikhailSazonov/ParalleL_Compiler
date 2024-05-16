@@ -14,8 +14,9 @@ Def::TypeTable& typeTable, bool skipIntermediate) {
     if (!genFile) {
         throw FailToCreateFile{};
     }
-    GenerateFunc("main", funcTable, typeTable);
-    Print(genFile);
+    bool needForMT = false;
+    GenerateFunc("main", funcTable, typeTable, needForMT);
+    Print(genFile, needForMT);
 }
 
 bool CppCodegen::TypedefCreated(Type* type) {
@@ -75,7 +76,7 @@ std::string CppCodegen::CreateTypedef(Type* type) {
         leftType = GetTypedef(arr->left.get());
         rightType = CreateTypedef(arr->right.get());
     } else {
-        leftType = "Void";
+        leftType = "void";
         rightType = GetTypedef(type);
     }
     return "Func<" + leftType + ", " + rightType + ">";
@@ -133,7 +134,8 @@ std::string CppCodegen::GenerateTypedefName(Type* type) {
 
 void CppCodegen::GenerateFunc(const std::string& name,
                               Def::FuncTable& funcTable,
-                              Def::TypeTable& typeTable) {
+                              Def::TypeTable& typeTable,
+                              bool& needForMT) {
     if (!cppFuncList.contains(name)) {
         auto nativeDesc = BaseLib::GetNative(name);
         if (nativeDesc) {
@@ -151,10 +153,10 @@ void CppCodegen::GenerateFunc(const std::string& name,
     }
     std::string result;
     if (name == "main") {
-        result = "int main() {\n\t";
+        result = "int main() {\n";
     } else {
         const auto& funcDesc = cppFuncList[name];
-        result = funcDesc.retType + " " + name + " (" + funcDesc.args + "& args) {\n\t";
+        result = funcDesc.retType + " " + name + " (" + funcDesc.args + "& args) {\n";
     }
     size_t startingDatasIdx = 0;
     for (const auto& def : funcTable.at(name)) {
@@ -162,73 +164,127 @@ void CppCodegen::GenerateFunc(const std::string& name,
         if (def.cond != nullptr) {
             resultingExpr += "{\n\t\t";
             std::vector<std::string> datas;
-            auto checkExpr = GenerateExpr(def.cond.get(), funcTable, typeTable, datas, startingDatasIdx);
-            for (const auto& str : datas) {
-                resultingExpr += str;
-            }
+            auto checkExpr = GenerateExpr2(*def.cond, funcTable, typeTable, needForMT);
+            resultingExpr += checkExpr.first;
             startingDatasIdx += datas.size();
-            resultingExpr += "if (" + checkExpr += ") {\n\t\t\t";
+            resultingExpr += "if (" + checkExpr.second += ") {\n\t\t\t";
         }
-        if (cppFuncList[name].retType != "Void" && name != "main") {
-            resultingExpr += "return ";
-        }
-        auto* expr = def.expr.get();
+        auto* expr = def.annExpr.get();
         std::vector<std::string> datas;
-        resultingExpr += GenerateExpr(expr, funcTable, typeTable, datas, startingDatasIdx);
-        resultingExpr += ";\n}\n";
-        for (const auto& str : datas) {
-            result += str;
+        auto valExpr = GenerateExpr2(*expr, funcTable, typeTable, needForMT);
+        resultingExpr += valExpr.first;
+        if (name != "main") {
+            resultingExpr += "\treturn " + valExpr.second + ";\n";
         }
-        result += resultingExpr;
-        if (def.cond != nullptr) {
-            result += "}\n";
-        }
+        result += resultingExpr + "}\n";
     }
     result += "\n";
     funcList[name] = result;
     funcsOrdered.push_back(result);
 }
 
+std::string CppCodegen::GetTypeForData(const std::string& name) {
+    std::string result = cppFuncList[name].retType;
+    for (const auto& arg : cppFuncList[name].argVect) {
+        result += ", " + arg;
+    }
+    return result;
+}
 
-std::string CppCodegen::GenerateExpr(Expression* expr,
-                                     Def::FuncTable& funcTable,
-                                     Def::TypeTable& typeTable,
-                                     std::vector<std::string>& datas,
-                                     const size_t startingIdx) {
-    if (expr->type == ExpressionType::LITERAL) {
-        auto* constExpr = dynamic_cast<ConstExpression*>(expr);
-        return constExpr->value;
-    } else if (expr->type == ExpressionType::APP) {
-        auto* appExpr = dynamic_cast<AppExpression*>(expr);
-        return "(" + GenerateExpr(appExpr->fun.get(), funcTable, typeTable, datas, startingIdx) + ").Eval(" +
-                GenerateExpr(appExpr->arg.get(), funcTable, typeTable, datas, startingIdx) + ").Eval()";
+std::pair<std::string, std::string> CppCodegen::GenerateExpr2(const AnnotatedExpression& annExpr,
+Def::FuncTable& ft, Def::TypeTable& typet, bool& needForMT) {
+    std::string result;
+    size_t i, j = 0;
+    for (const auto& [num, exprs] : annExpr) {
+        i = num;
+        if (exprs.size() > 1) {
+            // multithreaded
+            needForMT = true;
+            auto counterName = GenerateCounterName();
+            result += BaseLib::GetMTPreludeCode(counterName, std::to_string(exprs.size()));
+            for (const auto& expr : exprs) {
+                std::vector<std::string> datas;
+                auto genExpr = GenerateExpr3(expr.get(), typet, ft, num, j, datas, needForMT) + ";\n";
+                for (const auto& data : datas) {
+                    result += data;
+                }
+                auto argName = GenerateAnnotatedName(num, j);
+                result += BaseLib::GetFuncMTCode(argName, genExpr) +
+                        BaseLib::GetEvalMTCode(argName, counterName);
+                ++j;
+            }
+            result += BaseLib::GetMTCodaCode(counterName, std::to_string(exprs.size()));
+        } else {
+            const auto& expr = exprs.begin();
+            // single-threaded
+            std::vector<std::string> datas;
+            auto genExpr = GenerateExpr3(expr->get(), typet, ft, num, j, datas, needForMT);
+            if (num == (size_t)-1) {
+                j = 0;
+            }
+            auto argName = GenerateAnnotatedName(num, j);
+            for (const auto& data : datas) {
+                result += data;
+            }
+            result += BaseLib::GetFuncSTCode(argName, genExpr);
+        }
     }
-    auto* varExpr = dynamic_cast<VarExpression*>(expr);
-    if (IsMangledName({varExpr->name})) {
-        std::string demangled = varExpr->name;
-        demangled.pop_back();
-        return "std::move(std::get<" + demangled + ">(args))";
-    }
-    if (!funcList.contains(varExpr->name)) {
-        funcList[varExpr->name]; // recursion protection
-        GenerateFunc(varExpr->name, funcTable, typeTable);
-    }
-    std::string data = "Data<" + cppFuncList[varExpr->name].retType;
-    for (const auto& arg : cppFuncList[varExpr->name].argVect) {
-        data += ", " + arg;
-    }
-    std::string dataName = "data" + std::to_string(datas.size() + startingIdx);
-    data += "> " + dataName + "{.fun = &" + varExpr->name + "};\n\t";
-    datas.push_back(data);
-    return GetTypedef(typeTable.at(varExpr->name).get()) + "{&" + dataName + "}";
+    auto evalvalue = "arg" + GenerateAnnotatedName(i, j) + "ret";
+    newCounter = 0;
+    return {result, evalvalue};
 }
 
 
-void CppCodegen::Print(std::ofstream& file) {
-    for (const auto& inc : cppNatives.includes) {
+std::string CppCodegen::GenerateExpr3(Expression* expr,
+Def::TypeTable& typeTable, Def::FuncTable& funcTable,
+size_t argLeft, size_t& argRight, std::vector<std::string>& datas, bool& needForMT) {
+    auto annotatedName = GenerateAnnotatedName(argLeft, argRight);
+    if (expr->type == ExpressionType::VAR) {
+        auto* varExpr = dynamic_cast<VarExpression*>(expr);
+        if (IsMangledName(varExpr->name)) {
+            std::string demangled = varExpr->name;
+            demangled.pop_back();
+            return "std::move(std::get<" + demangled + ">(args))";
+        } else if (IsAnnotatedName(varExpr->name)) {
+            return "std::move(arg" + varExpr->name + "ret)";
+        }
+        if (!funcList.contains(varExpr->name)) {
+            funcList[varExpr->name]; // recursion protection
+            GenerateFunc(varExpr->name, funcTable, typeTable, needForMT);
+        }
+        ++argRight;
+        datas.push_back(BaseLib::GetDataCode(GetTypeForData(varExpr->name),
+                                             annotatedName, varExpr->name));
+        return GetTypedef(typeTable.at(varExpr->name).get()) + "{&data" + annotatedName + "}";
+    } else if (expr->type == ExpressionType::LITERAL) {
+        auto litExpr = dynamic_cast<ConstExpression*>(expr);
+        return litExpr->value;
+    }
+    auto* appExpr = dynamic_cast<AppExpression*>(expr);
+    return "(" + GenerateExpr3(appExpr->fun.get(), typeTable, funcTable, argLeft,
+                               argRight, datas, needForMT) +
+           ").Eval(" + GenerateExpr3(appExpr->arg.get(), typeTable, funcTable, argLeft,
+                                     argRight, datas, needForMT) + ")";
+}
+
+
+std::string CppCodegen::GenerateCounterName() {
+    return "counter" + std::to_string(newCounter++);
+}
+
+void CppCodegen::Print(std::ofstream& file, bool needForMT) {
+    auto includes = cppNatives.includes;
+    std::string baseCode = BaseLib::GetBaseCode(includes);
+    std::string baseMTCode;
+
+    if (needForMT) {
+        baseMTCode = BaseLib::GetMTCode(includes);
+    }
+    for (const auto& inc : includes) {
         file << inc;
     }
-    file << BaseLib::GetBaseCode();
+
+    file << baseCode << baseMTCode;
 
     file << "\n\n";
     for (const auto& typeDef : typedefsPods) {

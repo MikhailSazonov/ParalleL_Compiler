@@ -10,10 +10,11 @@
 
 namespace Def {
     const std::string MAIN_NAME = "main";
-    const std::string EXPR_SPEC_SYMB = "()+-*/%<>=.\'\"";
+    const std::string EXPR_SPEC_SYMB = "!()+-*/%<>=.\'\"";
     const std::string TYPE_DELIMETER = "->";
     const std::string EXPR_DELIMETER = " ";
     const char MANGLING_SYMBOL = '%';
+    const char ANNOT_DELIM_SYMBOL = '_';
     const std::string FILE_EXT = ".pl";
 
     const std::string WHERE_KEYWORD = "where";

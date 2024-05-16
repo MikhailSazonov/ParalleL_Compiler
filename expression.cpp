@@ -25,3 +25,7 @@ ConstExpression* CreateConstant(const std::string_view view) {
 bool IsConstant(const std::string_view view) {
     return IsBool(view) || IsNum(view) || IsChar(view) || IsFloat(view) || IsString(view);
 }
+
+bool IsAnnotation(const std::string_view view) {
+    return IsPositiveNum({&view[0], view.size() - 1}) && view.back() == '!';
+}

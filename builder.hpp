@@ -9,7 +9,12 @@
 
 void SyntaxError();
 
-std::unique_ptr<Expression> BuildExpression(const std::string_view, const std::unordered_map<std::string, size_t>&);
+std::unique_ptr<AnnotatedExpression> BuildExpression(const std::string_view,
+                                   const std::unordered_map<std::string, size_t>&);
+
+std::unique_ptr<Expression> BuildExpressionImpl(const std::string_view,
+                                       const std::unordered_map<std::string, size_t>&,
+                                                AnnotatedExpression&);
 
 std::unique_ptr<Type> BuildType(const std::string_view);
 

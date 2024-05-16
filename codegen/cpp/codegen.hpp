@@ -50,14 +50,27 @@ class CppCodegen : public ICodegen {
 
         std::string GenerateTypedefForCppFunc(const std::string&, Type* type, size_t);
 
-        void GenerateFunc(const std::string&, Def::FuncTable&, Def::TypeTable&);
+        void GenerateFunc(const std::string&, Def::FuncTable&, Def::TypeTable&, bool&);
 
-        std::string GenerateExpr(Expression*, Def::FuncTable&,
-                                 Def::TypeTable&,
-                                 std::vector<std::string>&,
-                                 const size_t);
+//        std::string GenerateExpr(Expression*, Def::FuncTable&,
+//                                 Def::TypeTable&,
+//                                 std::vector<std::string>&,
+//                                 const size_t);
 
-        void Print(std::ofstream&);
+        std::pair<std::string, std::string> GenerateExpr2(const AnnotatedExpression&, Def::FuncTable&,
+                             Def::TypeTable&, bool&);
+
+        std::string GenerateExpr3(Expression*,
+                                  Def::TypeTable&,
+                                  Def::FuncTable&,
+                                  size_t, size_t&,
+                                  std::vector<std::string>&, bool&);
+
+        void Print(std::ofstream&, bool);
+
+        std::string GetTypeForData(const std::string&);
+
+        std::string GenerateCounterName();
 
     private:
         TypedefList typedefsFuncs;
@@ -66,5 +79,7 @@ class CppCodegen : public ICodegen {
         FuncListOrdered funcsOrdered;
         CppFuncList cppFuncList;
         CppNatives cppNatives;
+
+        size_t newCounter;
 };
 

@@ -113,6 +113,12 @@ bool IsMangledName(const std::string_view src) {
     return !src.empty() && IsPositiveNum({&src[0], src.size() - 1}, true) && src.back() == Def::MANGLING_SYMBOL;
 }
 
+bool IsAnnotatedName(const std::string_view src) {
+    auto annPos = src.find(Def::ANNOT_DELIM_SYMBOL);
+    return annPos != std::string_view::npos
+        && IsPositiveNum({&src[0], annPos}, true)
+        && IsPositiveNum({&src[annPos + 1], src.size() - (annPos + 1)}, true);
+}
 
 bool IsOperator(const std::string_view c) {
     static const std::unordered_set<std::string> ops = {"+", "-", "*", "/", "%", "<", ">",
@@ -168,4 +174,8 @@ std::pair<size_t, size_t> GetLastTokenPos(const std::string_view view) {
     auto delimeter_pos = view.rfind(' ');
     return std::make_pair(delimeter_pos == std::string_view::npos ? 0 : delimeter_pos + 1,
                           view.size() - (delimeter_pos + 1));
+}
+
+std::string GenerateAnnotatedName(size_t left, size_t right) {
+    return std::to_string(left) + Def::ANNOT_DELIM_SYMBOL + std::to_string(right);
 }

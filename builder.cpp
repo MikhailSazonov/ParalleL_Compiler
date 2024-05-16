@@ -8,8 +8,16 @@
 
 #include <cctype>
 
-std::unique_ptr<Expression> BuildExpression(const std::string_view view,
+std::unique_ptr<AnnotatedExpression> BuildExpression(const std::string_view view,
 const std::unordered_map<std::string, size_t>& varPos) {
+    std::unique_ptr<AnnotatedExpression> expr(new AnnotatedExpression());
+    (*expr)[(size_t)-1].push_back(BuildExpressionImpl(view, varPos, *expr));
+    return expr;
+}
+
+std::unique_ptr<Expression> BuildExpressionImpl(const std::string_view view,
+const std::unordered_map<std::string, size_t>& varPos,
+AnnotatedExpression& expr) {
     std::string_view stripped = RemoveBrackets(Strip(view));
 
     if (IsConstant(stripped)) {
@@ -33,12 +41,26 @@ const std::unordered_map<std::string, size_t>& varPos) {
     // TODO: arithmetic operations order
     std::string op;
     if (!(op = BaseLib::Ops::GetOperator(next_token)).empty()) {
-        return std::make_unique<AppExpression>(BuildExpression({&op[0]}, varPos).release(),
-                                               BuildExpression(rest, varPos).release());
+        return std::make_unique<AppExpression>(BuildExpressionImpl({&op[0]}, varPos, expr).release(),
+                                               BuildExpressionImpl(rest, varPos, expr).release());
     }
 
-    return std::make_unique<AppExpression>(BuildExpression(rest, varPos).release(),
-                                   BuildExpression(next_token, varPos).release());
+    auto first_token_pos = GetNextTokenPos(stripped);
+    std::string_view first_token(&stripped[first_token_pos.first], first_token_pos.second);
+
+    if (IsAnnotation(first_token)) {
+        std::string_view annotNum{&first_token[0], first_token.size() - 1};
+        size_t annotNumInt = std::stoi(std::string(annotNum));
+        size_t annotatedArgNum = expr[annotNumInt].size();
+        expr[annotNumInt].push_back(nullptr);
+        expr[annotNumInt][annotatedArgNum] = BuildExpressionImpl({&stripped[first_token_pos.second],
+                                   stripped.size() - (first_token_pos.second)}, varPos, expr);
+        return std::make_unique<VarExpression>(std::string(annotNum) + Def::ANNOT_DELIM_SYMBOL +
+                            std::to_string(annotatedArgNum));
+    }
+
+    return std::make_unique<AppExpression>(BuildExpressionImpl(rest, varPos, expr).release(),
+                                           BuildExpressionImpl(next_token, varPos, expr).release());
 }
 
 
