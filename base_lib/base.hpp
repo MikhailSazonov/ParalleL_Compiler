@@ -18,21 +18,22 @@ namespace BaseLib {
     const std::pair<std::string, std::string> FLOAT_TYPE = {"Float", "float"};
     const std::pair<std::string, std::string> STRING_TYPE = {"String", "std::string"};
 
-
     const std::unordered_map<std::string, std::string> BASE_TYPES {
             VOID_TYPE,
             BOOL_TYPE,
             INT_TYPE,
             CHAR_TYPE,
             FLOAT_TYPE,
-            STRING_TYPE,
+            STRING_TYPE
     };
 
-//    std::unordered_map<std::string, std::vector<std::string>> FUNC_INCLUDES {
-//            {"print", {"iostream"}}
-//    };
+    bool CheckTypeExistence(const std::string&, const Def::ClassTable&);
 
-    bool CheckTypeExistance(const std::string&);
+    bool IsDefaultType(const std::string&);
+
+    bool IsAbstractType(const std::string&);
+
+    bool HasAbstractType(const Type*);
 
     struct NativeFun {
         std::string nativeDef;
@@ -40,7 +41,15 @@ namespace BaseLib {
         size_t argNo;
     };
 
+    enum class RedOpType {
+        READ,
+        WRITE
+    };
+
+    typedef std::set<std::pair<std::string, BaseLib::RedOpType>> Resources;
+
     struct NativeDesc {
+        Resources resources;
         std::unordered_set<std::string> includes;
         NativeFun fun;
     };
@@ -48,6 +57,8 @@ namespace BaseLib {
     std::optional<NativeDesc> GetNative(const std::string&);
 
     void LoadBaseTypes(Def::TypeTable&);
+
+    void LoadStandardTypes(Def::TypeTable&);
 
     std::string GetBaseCode(std::unordered_set<std::string>&);
 
@@ -64,4 +75,13 @@ namespace BaseLib {
     std::string GetEvalMTCode(const std::string&, const std::string&);
 
     std::string GetMTCodaCode(const std::string&, const std::string&);
+
+    // OOP CODE
+    std::string GenerateClassCode(const std::string&, const std::vector<std::pair<std::string, std::string>>&);
+
+    // CONST
+    std::string GenerateConstCode(const std::string&, const std::string&);
+
+    // ABSTRACT TYPE
+    std::string GenerateTemplateFromTemplate(const std::unordered_set<std::string>&);
 }

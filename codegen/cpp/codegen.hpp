@@ -23,54 +23,62 @@ class CppCodegen : public ICodegen {
     public:
         void Generate(Def::FuncTable&,
                       Def::TypeTable&,
+                      Def::ClassTable&,
                       bool);
 
-        void GenerateTypedef(const std::string&, Type*, size_t);
+        void GenerateTypedef(const std::string&, std::shared_ptr<Type>&,
+            size_t, Def::ClassTable&, bool generateCppFuncTypedef = true);
 
-        void GenerateTypedef(Type*);
+        void GenerateTypedef(std::shared_ptr<Type>&, Def::ClassTable&);
 
-        bool GeneratePodTypedef(Type*);
+        bool GeneratePodTypedef(std::shared_ptr<Type>&, Def::ClassTable&);
 
-        std::string CreateTypedef(Type*);
+        std::string CreateTypedef(std::shared_ptr<Type>&, Def::ClassTable&);
 
-        typedef std::vector<std::pair<Type*, std::pair<std::string, std::string>>> TypedefList;
+        typedef std::vector<std::pair<std::shared_ptr<Type>, std::pair<std::string, std::string>>> TypedefList;
         typedef std::unordered_map<std::string, FuncDesc> CppFuncList;
         typedef std::unordered_map<std::string, std::string> FuncList;
         typedef std::vector<std::string> FuncListOrdered;
+        typedef std::vector<std::pair<std::string, std::string>> ClassListOrdered;
 
-        bool TypedefCreated(Type*);
+        bool TypedefCreated(std::shared_ptr<Type>&);
 
-        std::string GetTypedef(Type*);
+        std::string GetTypedef(std::shared_ptr<Type>&, Def::ClassTable&);
 
-        std::string GenerateTypedefName(Type*);
+        std::string GenerateTypedefName(std::shared_ptr<Type>&, Def::ClassTable&);
 
-        std::string GenerateTypedefNameCpp(Type* type) {
-            return GenerateTypedefName(type) + "Cpp";
+        std::string GenerateTypedefNameCpp(std::shared_ptr<Type>& type, Def::ClassTable& clTable) {
+            return GenerateTypedefName(type, clTable) + "Cpp";
         }
 
-        std::string GenerateTypedefForCppFunc(const std::string&, Type* type, size_t);
+        std::string GenerateTypedefForCppFunc(const std::string&, std::shared_ptr<Type>* type, size_t, Def::ClassTable&,
+                                              bool generateCppTypedef = true);
 
-        void GenerateFunc(const std::string&, Def::FuncTable&, Def::TypeTable&, bool&);
-
-//        std::string GenerateExpr(Expression*, Def::FuncTable&,
-//                                 Def::TypeTable&,
-//                                 std::vector<std::string>&,
-//                                 const size_t);
+        void GenerateFunc(const std::string&, Def::FuncTable&, Def::TypeTable&, Def::ClassTable&, bool&);
 
         std::pair<std::string, std::string> GenerateExpr2(const AnnotatedExpression&, Def::FuncTable&,
-                             Def::TypeTable&, bool&);
+                             Def::TypeTable&, Def::ClassTable&, bool&, size_t&, const std::string&);
 
         std::string GenerateExpr3(Expression*,
                                   Def::TypeTable&,
                                   Def::FuncTable&,
+                                  Def::ClassTable&,
                                   size_t, size_t&,
-                                  std::vector<std::string>&, bool&);
+                                  std::vector<std::string>&, bool&, bool,
+                                  const std::string&);
 
         void Print(std::ofstream&, bool);
 
         std::string GetTypeForData(const std::string&);
 
+        std::string GetTypeForData(std::shared_ptr<Type>*, Def::ClassTable&, size_t);
+
+        std::string GetTypeForTemplateData(Def::TypeTable&, Expression*);
+
         std::string GenerateCounterName();
+
+        std::string GenerateUnmangledCode(const std::string_view, const std::string&,
+                                          const std::string&, Def::ClassTable&);
 
     private:
         TypedefList typedefsFuncs;
@@ -79,6 +87,7 @@ class CppCodegen : public ICodegen {
         FuncListOrdered funcsOrdered;
         CppFuncList cppFuncList;
         CppNatives cppNatives;
+        ClassListOrdered classListOrdered;
 
         size_t newCounter;
 };

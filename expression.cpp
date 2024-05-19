@@ -23,9 +23,15 @@ ConstExpression* CreateConstant(const std::string_view view) {
 }
 
 bool IsConstant(const std::string_view view) {
-    return IsBool(view) || IsNum(view) || IsChar(view) || IsFloat(view) || IsString(view);
+    return IsBool(view) || IsNum(view) || IsChar(view) || IsFloat(view) || IsString(view) || IsNull(view);
 }
 
 bool IsAnnotation(const std::string_view view) {
     return IsPositiveNum({&view[0], view.size() - 1}) && view.back() == '!';
+}
+
+bool IsAbstract(const std::string& src) {
+    return std::all_of(src.begin(), src.end(), [](char c) {
+        return 'a' <= c && c <= 'z';
+    });
 }

@@ -10,6 +10,7 @@
 
 enum class ExpressionType {
     VAR,
+    VAR_ABSTRACTED,
     APP,
     LITERAL
 };
@@ -28,6 +29,17 @@ struct VarExpression : public Expression {
     VarExpression(std::string name) : Expression(ExpressionType::VAR), name(std::move(name)) {}
 };
 
+struct AbstractVarExpression : public Expression {
+    std::string name;
+    std::shared_ptr<Type> type;
+    Def::ResolveTable resolveTable;
+
+    AbstractVarExpression(std::string name) : Expression(ExpressionType::VAR_ABSTRACTED),
+        name(std::move(name)) {}
+};
+
+bool IsAbstract(const std::string&);
+
 struct ConstExpression : public Expression {
     std::string value;
     std::shared_ptr<Type> correspondingType;
@@ -36,8 +48,13 @@ struct ConstExpression : public Expression {
         :
       Expression(ExpressionType::LITERAL)
     , value(std::move(value))
-    , correspondingType(new Pod(type))
-        {}
+    {
+        if (IsAbstract(type)) {
+            correspondingType = std::make_shared<Abstract>(type);
+        } else {
+            correspondingType = std::make_shared<Pod>(type);
+        }
+    }
 };
 
 struct AppExpression : Expression {

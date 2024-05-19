@@ -18,13 +18,14 @@ int main(int argc, char** argv) {
     Def::TypeTable typeTable;
     Def::FuncTable funcTable;
     Def::AnnTable annTable;
+    Def::ClassTable classTable;
     BaseLib::LoadBaseTypes(typeTable);
-    if (Parse(typeTable, funcTable, annTable, std::string(argv[1])) != 0) {
+    if (Parse(typeTable, funcTable, annTable, classTable, std::string(argv[1])) != 0) {
         return 1;
     }
     if (!funcTable.contains(Def::MAIN_NAME)) {
         std::cerr << "Main module not found.\n";
         return 1;
     }
-    CreateCodegen(CodegenType::CPP)->Generate(funcTable, typeTable, true);
+    CreateCodegen(CodegenType::CPP)->Generate(funcTable, typeTable, classTable, true);
 }

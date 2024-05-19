@@ -89,6 +89,13 @@ class DoubleDefinition : public ParalleLCompilerError {
         }
 };
 
+class TypeUndefined : public ParalleLCompilerError {
+public:
+    const char *what() const noexcept {
+        return "Type undefined.";
+    }
+};
+
 class FileError : public ParalleLCompilerError {
 
 };
@@ -113,4 +120,25 @@ class FailToCreateFile : public FileError {
         const char *what() const noexcept {
             return "Failed to create output file.";
         }
+};
+
+class DoubleWhere : public ParalleLCompilerError {
+    public:
+        const char *what() const noexcept {
+            return "Double where.";
+        }
+};
+
+class AbstractTypeUnresolved : public ParalleLCompilerError {
+    public:
+        const char *what() const noexcept {
+            return "Type unresolved.";
+        }
+};
+
+class AbstractTypeMismatch : public ParalleLCompilerError {
+public:
+    const char *what() const noexcept {
+        return "Abstract type mismatch.";
+    }
 };

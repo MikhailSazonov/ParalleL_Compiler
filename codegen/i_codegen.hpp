@@ -11,5 +11,6 @@ class ICodegen {
 
         virtual void Generate(Def::FuncTable&,
                               Def::TypeTable&,
+                              Def::ClassTable&,
                               bool) = 0;
 };

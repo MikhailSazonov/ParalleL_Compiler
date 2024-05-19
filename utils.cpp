@@ -108,6 +108,9 @@ bool IsString(const std::string_view src) {
     return src.size() >= 2 && src.front() == '\"' && src.back() == '\"';
 }
 
+bool IsNull(const std::string_view src) {
+    return src == "{}";
+}
 
 bool IsMangledName(const std::string_view src) {
     return !src.empty() && IsPositiveNum({&src[0], src.size() - 1}, true) && src.back() == Def::MANGLING_SYMBOL;

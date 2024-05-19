@@ -1,29 +1,53 @@
 #include "base.hpp"
 
 #include "../errors.hpp"
+#include "../definitions.hpp"
 
 #include "io.hpp"
+#include "alg.hpp"
 #include "operators.hpp"
 
 #include <thread>
 
-bool BaseLib::CheckTypeExistance(const std::string& type) {
-    // TODO
-    return true;
+bool BaseLib::CheckTypeExistence(const std::string& typeName, const Def::ClassTable& classTable) {
+    return IsDefaultType(typeName) ||
+        std::any_of(classTable.begin(), classTable.end(),
+        [&typeName](const Class& cl) {
+            return cl.name == typeName;
+        });
+}
+
+bool BaseLib::IsDefaultType(const std::string& typeName) {
+    return BASE_TYPES.contains(typeName);
+}
+
+bool BaseLib::IsAbstractType(const std::string& src) {
+    return std::all_of(src.begin(), src.end(), [](char c) {
+        return 'a' <= c && c <= 'z';
+    });
 }
 
 std::optional<BaseLib::NativeDesc> BaseLib::GetNative(const std::string& name) {
     std::optional<BaseLib::NativeDesc> result;
-    if ((result = BaseLib::Io::GetNative(name)).has_value()) {
+    if ((result = BaseLib::Io::GetNative(name)).has_value() ||
+    (result = BaseLib::Ops::GetNative(name)).has_value()) {
         return result;
     }
-    return BaseLib::Ops::GetNative(name);
+    return BaseLib::Alg::GetNative(name);
 }
 
 void BaseLib::LoadBaseTypes(Def::TypeTable& typeTable) {
     typeTable["main"] = std::make_shared<Pod>("Void");
+    BaseLib::LoadStandardTypes(typeTable);
     BaseLib::Io::LoadBaseTypes(typeTable);
     BaseLib::Ops::LoadBaseTypes(typeTable);
+    BaseLib::Alg::LoadBaseTypes(typeTable);
+}
+
+void BaseLib::LoadStandardTypes(Def::TypeTable& typeTable) {
+    for (const auto& [typeName, _] : BASE_TYPES) {
+        typeTable[typeName] = std::make_shared<Pod>(typeName);
+    }
 }
 
 std::string BaseLib::GetBaseCode(std::unordered_set<std::string>& includes) {
@@ -115,7 +139,16 @@ std::string BaseLib::GetBaseCode(std::unordered_set<std::string>& includes) {
            "    ControlBlock* fn;\n"
            "};\n"
            "\n"
-           "struct Unit {};\n\n";
+           "struct Unit {};\n"
+           "\n"
+           "template <typename T>\n"
+           "struct SimpleContainer {\n"
+           "    T value;\n"
+           "\n"
+           "    auto& Eval() {\n"
+           "        return *this;\n"
+           "    }\n"
+           "};\n\n";
 }
 
 std::string BaseLib::GetMTCode(std::unordered_set<std::string>& includes) {
@@ -340,4 +373,74 @@ std::string BaseLib::GetMTCodaCode(const std::string& counterName, const std::st
     result.replace(result.find("%s1"), 3, counterName);
     result.replace(result.find("%s2"), 3, pieces);
     return result;
+}
+
+std::string BaseLib::GenerateClassCode(const std::string& className,
+const std::vector<std::pair<std::string, std::string>>& classVars) {
+    std::string result = "struct %s1Gen {\n";
+    result.replace(result.find("%s1"), 3, className);
+
+    std::string genTemplate =   "    %s1 %s2;\n"
+                                "\n"
+                                "    auto& Get%s2() {\n"
+                                "        return %s2;\n"
+                                "    }\n"
+                                "\n";
+    std::string getTemplateRecursive = "    std::shared_ptr<%s1Gen> %s2;\n"
+                                       "\n"
+                                       "    auto& Get%s2() {\n"
+                                       "        if (%s2 == nullptr) {\n"
+                                       "            %s2 = std::make_shared<%s1Gen>();\n"
+                                       "        }\n"
+                                       "        return *%s2;\n"
+                                       "    }\n\n";
+
+    for (const auto& nextField : classVars) {
+        std::string templateCopy;
+        if (nextField.first == className) {
+            templateCopy = getTemplateRecursive;
+        } else {
+            templateCopy = genTemplate;
+        }
+        size_t pos = 0;
+        while ((pos = templateCopy.find("%s1")) != std::string::npos) {
+            templateCopy.replace(pos, 3, nextField.first);
+        }
+        while ((pos = templateCopy.find("%s2")) != std::string::npos) {
+            templateCopy.replace(pos, 3, nextField.second);
+        }
+        result += templateCopy;
+    }
+    std::string coda = "};\n\ntypedef SimpleContainer<%s1Gen> %s1;\n\n";
+    coda.replace(coda.find("%s1"), 3, className);
+    coda.replace(coda.find("%s1"), 3, className);
+    result += coda;
+    return result;
+}
+
+std::string BaseLib::GenerateConstCode(const std::string& constant, const std::string& type) {
+    std::string result = "%s1{%s2}";
+    result.replace(result.find("%s1"), 3, type);
+    result.replace(result.find("%s2"), 3, constant);
+    return result;
+}
+
+std::string BaseLib::GenerateTemplateFromTemplate(const std::unordered_set<std::string>& absTypes) {
+    if (absTypes.empty()) {
+        return "";
+    }
+    std::string templateStr = "template <typename %s1>\n";
+    size_t i = 0;
+    for (const auto& absType : absTypes) {
+        auto replacePos = templateStr.find("%s1");
+        if (i < absTypes.size() - 1) {
+            auto leftSubstr = templateStr.substr(0, replacePos);
+            auto rightSubstr = templateStr.substr(replacePos);
+            templateStr = leftSubstr + absType + ", " + rightSubstr;
+        } else {
+            templateStr.replace(replacePos, 3, absType);
+        }
+        ++i;
+    }
+    return templateStr;
 }

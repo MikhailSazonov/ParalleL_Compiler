@@ -40,6 +40,8 @@ bool IsFloat(const std::string_view);
 
 bool IsString(const std::string_view);
 
+bool IsNull(const std::string_view src);
+
 bool IsMangledName(const std::string_view);
 
 bool IsAnnotatedName(const std::string_view src);
