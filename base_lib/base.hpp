@@ -18,6 +18,8 @@ namespace BaseLib {
     const std::pair<std::string, std::string> FLOAT_TYPE = {"Float", "float"};
     const std::pair<std::string, std::string> STRING_TYPE = {"String", "std::string"};
 
+    const std::string NULL_TYPE = {"Null"};
+
     const std::unordered_map<std::string, std::string> BASE_TYPES {
             VOID_TYPE,
             BOOL_TYPE,
@@ -84,4 +86,12 @@ namespace BaseLib {
 
     // ABSTRACT TYPE
     std::string GenerateTemplateFromTemplate(const std::unordered_set<std::string>&);
+
+    // FBIP
+    std::string GenerateFbipCode(const std::string&, const std::string&, bool);
+
+    // PACKED CLASS
+    std::string GeneratePackedClassCode(const std::vector<std::string>&,
+                                        const std::vector<std::pair<std::string, std::string>>&,
+                                        const std::string&, const std::string&);
 }

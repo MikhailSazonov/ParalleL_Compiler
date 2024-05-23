@@ -12,7 +12,7 @@ struct Type;
 
 namespace Def {
     const std::string MAIN_NAME = "main";
-    const std::string EXPR_SPEC_SYMB = "!()+-*/%<>=.\'\"";
+    const std::string EXPR_SPEC_SYMB = "\\{};:!()+-*/%<>=.\'\"";
     const std::string TYPE_DELIMETER = "->";
     const std::string EXPR_DELIMETER = " ";
     const char MANGLING_SYMBOL = '%';
@@ -25,6 +25,9 @@ namespace Def {
     const std::string CLASS_KEYWORD = "class";
 
     const std::string ANNOTATE_KEYWORD = "annotate";
+    const std::string RACING_KEYWORD = "racing";
+
+    const std::string PACKED_GENERATED = "pack_";
 
     typedef std::unordered_map<std::string, std::shared_ptr<Type>> TypeTable;
     typedef std::unordered_map<std::string, std::vector<FuncDef>> FuncTable;

@@ -211,6 +211,7 @@ void CppCodegen::GenerateFunc(const std::string& name,
     } else {
         const auto& funcDesc = cppFuncList[name];
         result += funcDesc.retType + " " + name + " (" + funcDesc.args + "& args) {\n";
+        funcDeclarations.push_back(funcDesc.retType + " " + name + " (" + funcDesc.args + "& args);\n\n");
     }
     size_t startingDatasIdx = 0;
     size_t retIdx = 0;
@@ -228,7 +229,7 @@ void CppCodegen::GenerateFunc(const std::string& name,
         auto valExpr = GenerateExpr2(*expr, funcTable, typeTable, classTable, needForMT, retIdx, name);
         resultingExpr += valExpr.first;
         if (name != "main") {
-            resultingExpr += "\treturn " + valExpr.second + ";\n";
+            resultingExpr += "\treturn " + valExpr.second + ".Replicate();\n";
         }
         result += resultingExpr + "}\n}\n";
     }
@@ -288,6 +289,7 @@ const std::string& name) {
     for (const auto& [num, exprs] : annExpr) {
         i = num;
         k = 0;
+        size_t stIdx = 0;
         if (exprs.size() > 1) {
             // multithreaded
             needForMT = true;
@@ -295,11 +297,24 @@ const std::string& name) {
             result += BaseLib::GetMTPreludeCode(counterName, std::to_string(exprs.size()));
             for (const auto& expr : exprs) {
                 std::vector<std::string> datas;
+                std::vector<std::string> storages;
+                std::vector<std::string> packStorages;
                 auto genExpr = GenerateExpr3(expr.get(), typet, ft, classTable, num, j,
-                                             datas, needForMT, true, name) + ";\n";
+                                             datas, needForMT, true,
+                                             name, storages, stIdx, packStorages, retIdx) + ";\n";
+
                 for (const auto& data : datas) {
                     result += data;
                 }
+
+                for (const auto& storage : storages) {
+                    result += storage;
+                }
+
+                for (const auto& pack : packStorages) {
+                    result += pack;
+                }
+
                 auto argName = GenerateAnnotatedName(num, k);
                 result += BaseLib::GetFuncMTCode(argName, genExpr) +
                         BaseLib::GetEvalMTCode(argName, counterName);
@@ -310,15 +325,25 @@ const std::string& name) {
             const auto& expr = exprs.begin();
             // single-threaded
             std::vector<std::string> datas;
+            std::vector<std::string> storages;
+            std::vector<std::string> packStorages;
             auto genExpr = GenerateExpr3(expr->get(), typet, ft, classTable,
-                                         num, j, datas, needForMT, true, name);
+                                         num, j, datas, needForMT, true,
+                                         name, storages, stIdx, packStorages, retIdx);
             j = 0;
             if (num == (size_t)-1) {
                 j = retIdx;
+                k = retIdx;
             }
             auto argName = GenerateAnnotatedName(num, k);
             for (const auto& data : datas) {
                 result += data;
+            }
+            for (const auto& storage : storages) {
+                result += storage;
+            }
+            for (const auto& pack : packStorages) {
+                result += pack;
             }
             result += BaseLib::GetFuncSTCode(argName, genExpr);
         }
@@ -329,18 +354,63 @@ const std::string& name) {
     return {result, evalvalue};
 }
 
+static size_t numPackedToGen = 0;
+static size_t storageNoX = 0;
 
 std::string CppCodegen::GenerateExpr3(Expression* expr,
 Def::TypeTable& typeTable, Def::FuncTable& funcTable,
 Def::ClassTable& classTable,
 size_t argLeft, size_t& argRightData,
-std::vector<std::string>& datas, bool& needForMT, bool topLevel, const std::string& name) {
-    if (expr->type == ExpressionType::VAR) {
+std::vector<std::string>& datas, bool& needForMT, bool topLevel, const std::string& name,
+std::vector<std::string>& fbipStorages, size_t& storageNo,
+std::vector<std::string>& packStorages,
+size_t& retIdx) {
+    if (expr->type == ExpressionType::PACKED) {
+        auto* packExpr = dynamic_cast<PackedExpression*>(expr);
+
+        auto retType = cppFuncList[name].retType;
+        auto packName = Def::PACKED_GENERATED + std::to_string(numPackedToGen++);
+
+        std::vector<std::string> elemsEvals;
+
+        for (const auto& annExpr : packExpr->exprs) {
+            auto [res, evalValue] = GenerateExpr2(*annExpr, funcTable, typeTable, classTable, needForMT,
+                                                  retIdx, name);
+            // TODO : idcs mappings
+            if (res.ends_with("Null{}.Eval();\n")) {
+                continue;
+            }
+            retIdx++;
+            packStorages.push_back(res);
+            elemsEvals.push_back(evalValue);
+        }
+
+        packStorages.push_back(BaseLib::GeneratePackedClassCode(elemsEvals,
+                    FindClass(retType, classTable)->values, retType, packName));
+        return packName;
+
+    } else if (expr->type == ExpressionType::VAR) {
         auto* varExpr = dynamic_cast<VarExpression*>(expr);
         if (varExpr->name.find(Def::MANGLING_SYMBOL) != std::string::npos) {
+
             auto argNo = std::stoi(varExpr->name.substr(0, varExpr->name.find(Def::MANGLING_SYMBOL)));
             std::string arg = cppFuncList[name].argVect[argNo];
-            return GenerateUnmangledCode(varExpr->name, arg, "", classTable);
+
+            auto res = GenerateUnmangledCode(varExpr->name, arg, {}, classTable);
+            std::string result = res.first;
+
+//            if (result == "std::move(std::get<0>(args).Get().Getvalue())") {
+//                int a = 5;
+//            }
+
+            // do we need second check?
+            if (FindClass(res.second, classTable)) {
+                GenerateCopyCode(storageNoX, result, fbipStorages);
+                result = "std::move(copy" + std::to_string(storageNoX) + ")";
+                storageNoX++;
+            }
+
+            return result;
         } else if (IsAnnotatedName(varExpr->name)) {
             return "std::move(arg" + varExpr->name + "ret)";
         }
@@ -369,14 +439,20 @@ std::vector<std::string>& datas, bool& needForMT, bool topLevel, const std::stri
         return tempTypedef + "{&data" + annotatedName + "}";
     } else if (expr->type == ExpressionType::LITERAL) {
         auto litExpr = dynamic_cast<ConstExpression*>(expr);
+        if (litExpr->value == "{}") {
+            auto podType = dynamic_cast<Pod*>(litExpr->correspondingType.get());
+            return podType->typeName + litExpr->value;
+        }
         return BaseLib::GenerateConstCode(litExpr->value,
                           GetTypedef(litExpr->correspondingType, classTable));
     }
     auto* appExpr = dynamic_cast<AppExpression*>(expr);
     std::string result = "(" + GenerateExpr3(appExpr->fun.get(), typeTable, funcTable, classTable, argLeft,
-                                         argRightData, datas, needForMT, false, name) +
+                                         argRightData, datas, needForMT,
+                                         false, name, fbipStorages, storageNo, packStorages, retIdx) +
                      ").Eval(" + GenerateExpr3(appExpr->arg.get(), typeTable, funcTable, classTable, argLeft,
-                                               argRightData, datas, needForMT, false, name) + ")";
+                                               argRightData, datas, needForMT,
+                                               false, name, fbipStorages, storageNo, packStorages, retIdx) + ")";
     if (!topLevel) {
         result += ".Eval()";
     }
@@ -412,38 +488,54 @@ void CppCodegen::Print(std::ofstream& file, bool needForMT) {
     for (const auto& typeDef : typedefsFuncs) {
         file << "typedef " << typeDef.second.first << " " << typeDef.second.second << ";\n\n";
     }
+    for (const auto& decl : funcDeclarations) {
+        file << decl;
+    }
     for (const auto& func : funcsOrdered) {
         file << func << "\n";
     }
     file << "\n";
 }
 
-std::string CppCodegen::GenerateUnmangledCode(const std::string_view baseString,
-const std::string& className, const std::string& varName, Def::ClassTable& classTable) {
+std::pair<std::string, std::string> CppCodegen::GenerateUnmangledCode(const std::string_view baseString,
+const std::string& className, const std::vector<std::pair<std::string, std::string>>& values,
+Def::ClassTable& classTable) {
     if (baseString.empty()) {
-        return "";
+        return {"", ""};
     }
     size_t pos;
     if ((pos = baseString.find(Def::MANGLING_SYMBOL)) != std::string_view::npos) {
         auto numStr = std::string(&baseString[0], pos);
         auto num = std::stoi(numStr);
         auto* thisClass = FindClass(className, classTable);
-        auto rest = GenerateUnmangledCode({&baseString[pos + 1], baseString.size() - (pos + 1)},
-                          thisClass->values[num].first, thisClass->values[num].second, classTable);
-        return "std::get<" + numStr + ">(args)" + rest;
+        std::pair<std::string, std::string> rest{"", className};
+        if (thisClass) {
+            auto res = GenerateUnmangledCode({&baseString[pos + 1], baseString.size() - (pos + 1)},
+                                         thisClass->values[num].first, thisClass->values, classTable);
+            rest.first = res.first;
+            rest.second = (res.second.empty() ? rest.second : res.second);
+        }
+        return {"std::move(std::get<" + numStr + ">(args)" + rest.first + ")", rest.second};
     }
     pos = baseString.find(Def::UNPACKING_SYMBOL, 1);
     size_t num;
+    std::pair<std::string, std::string> rest{"", className};
     if (pos == std::string::npos) {
         num = std::stoi(std::string(&baseString[1]));
     } else {
         num = std::stoi(std::string(&baseString[1], pos - 1));
     }
     auto* thisClass = FindClass(className, classTable);
-    std::string rest;
-    if (thisClass) {
-        rest = GenerateUnmangledCode({&baseString[pos + 1], baseString.size() - (pos + 1)},
-                                     thisClass->values[num].first, thisClass->values[num].second, classTable);
+    if (thisClass && pos != std::string::npos) {
+        auto res = GenerateUnmangledCode({&baseString[pos + 1], baseString.size() - (pos + 1)},
+                                     thisClass->values[num].first, thisClass->values, classTable);
+        rest.first = res.first;
+        rest.second = (res.second.empty() ? rest.second : res.second);
     }
-    return ".Get" + varName + "()" + rest;
+    return {".Get().Get" + values[num].second + "()" + rest.first, rest.second};
+}
+
+void CppCodegen::GenerateCopyCode(size_t argNo, const std::string& src,
+std::vector<std::string>& storageVector) {
+    storageVector.push_back(BaseLib::GenerateFbipCode(std::to_string(argNo), src, storageVector.empty()));
 }

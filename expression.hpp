@@ -12,7 +12,8 @@ enum class ExpressionType {
     VAR,
     VAR_ABSTRACTED,
     APP,
-    LITERAL
+    LITERAL,
+    PACKED
 };
 
 struct Expression {
@@ -72,6 +73,13 @@ struct AppExpression : Expression {
 };
 
 typedef std::map<size_t, std::vector<std::unique_ptr<Expression>>> AnnotatedExpression;
+
+struct PackedExpression : Expression {
+    std::vector<std::shared_ptr<AnnotatedExpression>> exprs;
+    std::shared_ptr<Type> correspondingType;
+
+    PackedExpression() : Expression(ExpressionType::PACKED) {}
+};
 
 ConstExpression* CreateConstant(const std::string_view);
 

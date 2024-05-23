@@ -65,7 +65,9 @@ class CppCodegen : public ICodegen {
                                   Def::ClassTable&,
                                   size_t, size_t&,
                                   std::vector<std::string>&, bool&, bool,
-                                  const std::string&);
+                                  const std::string&,
+                                  std::vector<std::string>&, size_t&,
+                                  std::vector<std::string>&, size_t&);
 
         void Print(std::ofstream&, bool);
 
@@ -77,8 +79,11 @@ class CppCodegen : public ICodegen {
 
         std::string GenerateCounterName();
 
-        std::string GenerateUnmangledCode(const std::string_view, const std::string&,
-                                          const std::string&, Def::ClassTable&);
+        std::pair<std::string, std::string> GenerateUnmangledCode(const std::string_view, const std::string&,
+                                          const std::vector<std::pair<std::string, std::string>>&,
+                                          Def::ClassTable&);
+
+        void GenerateCopyCode(size_t, const std::string&, std::vector<std::string>&);
 
     private:
         TypedefList typedefsFuncs;
@@ -88,7 +93,7 @@ class CppCodegen : public ICodegen {
         CppFuncList cppFuncList;
         CppNatives cppNatives;
         ClassListOrdered classListOrdered;
-
+        std::vector<std::string> funcDeclarations;
         size_t newCounter;
 };
 

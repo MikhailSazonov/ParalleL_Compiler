@@ -9,7 +9,10 @@
 #include "funcdef.hpp"
 #include "definitions.hpp"
 
-void Analyze(Def::TypeTable&, Def::FuncTable&, Def::AnnTable&, Def::ClassTable&, const std::string&, bool);
+void Analyze(Def::TypeTable&, Def::FuncTable&,
+             Def::AnnTable&, Def::ClassTable&,
+             const std::string&, bool,
+             std::unordered_set<std::string>&);
 
 int Parse(Def::TypeTable&, Def::FuncTable&, Def::AnnTable&, Def::ClassTable&, const std::string&);
 
@@ -26,6 +29,9 @@ void AnalyzeClassInPlace(const std::string&, std::string_view, std::unordered_ma
 
 std::string_view GetToken(const std::string_view, size_t&);
 
-std::string GetVarByNo(Type*, size_t);
-
 void ClearLocalVars(Def::TypeTable&);
+
+std::unique_ptr<AnnotatedExpression> GeneratePackedExpr(const std::string_view,
+                                               const std::unordered_map<std::string, std::string>&,
+                                               Def::TypeTable&,
+                                               std::shared_ptr<Type>&);

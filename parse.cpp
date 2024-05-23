@@ -25,9 +25,10 @@ int Parse(Def::TypeTable& typeTable,
     }
     std::string line;
     size_t lineNo = 1;
+    std::unordered_set<std::string> racingFuns;
     while (std::getline(file, line)) {
         try {
-            Analyze(typeTable, defTable, annTable, classTable, line, false);
+            Analyze(typeTable, defTable, annTable, classTable, line, false, racingFuns);
             ++lineNo;
         } catch (const ParalleLCompilerError& er) {
             std::cerr << "Error on line " << lineNo << ": " << er.what() << '\n';
@@ -45,7 +46,8 @@ void Analyze(Def::TypeTable& typeTable,
              Def::AnnTable& annTable,
              Def::ClassTable& classTable,
              const std::string& line,
-             bool desugared) {
+             bool desugared,
+             std::unordered_set<std::string>& racingFuns) {
     if (line.empty() || line.starts_with("%%")) {
         return;
     }
@@ -102,6 +104,15 @@ void Analyze(Def::TypeTable& typeTable,
         AddAnnotation(annTable, {&lineView[idx]});
         return;
     }
+
+    bool racing = name == Def::RACING_KEYWORD;
+    if (racing) {
+        name = Strip(GetToken(lineView, idx));
+        racingFuns.insert(std::string(name));
+    }
+
+    std::string funName(name);
+
     for (; idx < lineView.size() && std::isspace(lineView[idx]); ++idx) {}
     if (idx == lineView.size()) {
         throw UnexpectedEndOfString{};
@@ -116,6 +127,10 @@ void Analyze(Def::TypeTable& typeTable,
         typeTable[std::string(name)] = BuildType(typeDef, classTable);
         return;
     } else /*if (std::isalpha(lineView[idx]) || lineView[idx] == '=')*/ {
+        if (racing) {
+            throw UnexpectedSymbol{};
+        }
+
         std::unordered_map<std::string, std::string> argsMapping;
         if (lineView[idx] != '=' && !typeTable.contains(std::string(name))) {
             throw UndefinedVariableError{};
@@ -161,7 +176,7 @@ void Analyze(Def::TypeTable& typeTable,
             } else {
                 lineCopy += " where " + Def::GEN_NAME + " == " + tokenString;
             }
-            Analyze(typeTable, defTable, annTable, classTable, lineCopy, true);
+            Analyze(typeTable, defTable, annTable, classTable, lineCopy, true, racingFuns);
             return;
         }
         if (next_token != "=") {
@@ -171,9 +186,14 @@ void Analyze(Def::TypeTable& typeTable,
         std::string_view expr(&lineView[idx], whereKeyword == std::string::npos ?
                     lineView.size() - idx :
                     whereKeyword - idx);
-        CheckExprSyntax(Strip(expr));
-//        auto* retType = LoadArgs(typeTable, currentArgN, typeTable[std::string(name)].get());
-        auto typedExpr = BuildExpression(expr, argsMapping, typeTable);
+        expr = Strip(expr);
+        CheckExprSyntax(expr);
+        std::unique_ptr<AnnotatedExpression> typedExpr;
+        if (expr[0] == '{') {
+            typedExpr = GeneratePackedExpr(expr, argsMapping, typeTable, typeTable.at(funName));
+        } else {
+            typedExpr = BuildExpression(expr, argsMapping, typeTable);
+        }
         // support syntactic sugar : x = 5 (no type presented)
         if ((*typedExpr)[(size_t)-1].back()->type == ExpressionType::LITERAL &&
         !typeTable.contains(std::string(name))) {
@@ -198,7 +218,8 @@ void Analyze(Def::TypeTable& typeTable,
         if (!defTable[std::string(name)].empty() && defTable[std::string(name)].back().cond == nullptr) {
             throw DefaultAlreadyDeclared{};
         }
-        defTable[std::string(name)].push_back({std::move(cond), std::move(typedExpr), currentArgN});
+        defTable[std::string(name)].push_back({std::move(cond), std::move(typedExpr), currentArgN,
+                                               racingFuns.contains(std::string(name))});
         ClearLocalVars(typeTable);
         return;
     }
@@ -267,7 +288,7 @@ void CheckExprSyntax(const std::string_view view) {
     size_t balance = 0;
     for (char c : view) {
         if (!std::isspace(c) && !std::isalpha(c) && !std::isdigit(c) &&
-            Def::EXPR_SPEC_SYMB.find(c) == std::string::npos) {
+        Def::EXPR_SPEC_SYMB.find(c) == std::string::npos) {
             throw UnexpectedSymbol{};
         }
         if (c == '(') {
@@ -360,15 +381,6 @@ Def::TypeTable& typeTable, const Def::ClassTable& clTable) {
     }
 }
 
-std::string GetVarByNo(Type* type, size_t argNo) {
-    auto* arrType = dynamic_cast<Arrow*>(type);
-    if (argNo == 0) {
-        auto* leftArg = dynamic_cast<Pod*>(arrType->left.get());
-        return leftArg->typeName;
-    }
-    return GetVarByNo(arrType->right.get(), argNo - 1);
-}
-
 void ClearLocalVars(Def::TypeTable& typeTable) {
     auto typeTableClone = typeTable;
     for (const auto& [name, type] : typeTableClone) {
@@ -376,4 +388,41 @@ void ClearLocalVars(Def::TypeTable& typeTable) {
             typeTable.erase(name);
         }
     }
+}
+
+static std::shared_ptr<Type> GetLastFunType(std::shared_ptr<Type> funType) {
+    while (funType->type == TermType::ARROW) {
+        auto* arrow = dynamic_cast<Arrow*>(funType.get());
+        funType = arrow->right;
+    }
+    return funType;
+}
+
+std::unique_ptr<AnnotatedExpression> GeneratePackedExpr(const std::string_view line,
+                                               const std::unordered_map<std::string, std::string>& varPos,
+                                               Def::TypeTable& typeTable,
+                                               std::shared_ptr<Type>& funType) {
+    std::string_view next_token;
+    size_t prev_pos = 1;
+    size_t pos;
+    auto* expr = new PackedExpression();
+    expr->correspondingType = GetLastFunType(funType);
+    if (line != "{}") {
+        for (;;) {
+            pos = line.find(';', prev_pos);
+            if (pos == -1) {
+                pos = line.size() - 1;
+            }
+            next_token = line.substr(prev_pos, pos - prev_pos);
+            prev_pos = pos + 1;
+
+            expr->exprs.push_back(BuildExpression(next_token, varPos, typeTable));
+            if (pos == line.size() - 1) {
+                break;
+            }
+        }
+    }
+    auto result = std::make_unique<AnnotatedExpression>();
+    (*result)[(size_t)-1].push_back(std::unique_ptr<PackedExpression>(expr));
+    return result;
 }

@@ -1,25 +1,25 @@
 #include "../builder.hpp"
 
-bool CompareExpr(Expression& expr1, Expression& expr2) {
-    if (expr1.type != expr2.type) {
-        return false;
-    }
-    if (expr1.type == ExpressionType::APP) {
-        auto& app1 = (AppExpression&)expr1;
-        auto& app2 = (AppExpression&)expr2;
-        return CompareExpr(*app1.arg, *app2.arg) && CompareExpr(*app1.fun, *app2.fun);
-    }
-    // TODO: proper value
-    auto& var1 = (VarExpression&)expr1;
-    auto& var2 = (VarExpression&)expr2;
-    return var1.name == var2.name;
-}
+//bool CompareExpr(Expression& expr1, Expression& expr2) {
+//    if (expr1.type != expr2.type) {
+//        return false;
+//    }
+//    if (expr1.type == ExpressionType::APP) {
+//        auto& app1 = (AppExpression&)expr1;
+//        auto& app2 = (AppExpression&)expr2;
+//        return CompareExpr(*app1.arg, *app2.arg) && CompareExpr(*app1.fun, *app2.fun);
+//    }
+//    // TODO: proper value
+//    auto& var1 = (VarExpression&)expr1;
+//    auto& var2 = (VarExpression&)expr2;
+//    return var1.name == var2.name;
+//}
 
-void assert2(Expression& expr1, Expression& expr2) {
-    if (!CompareExpr(expr1, expr2)) {
-        throw 5;
-    }
-}
+//void assert2(Expression& expr1, Expression& expr2) {
+//    if (!CompareExpr(expr1, expr2)) {
+//        throw 5;
+//    }
+//}
 
 //int main() {
 //    // testing

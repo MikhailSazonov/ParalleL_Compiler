@@ -1,11 +1,13 @@
 #include "io.hpp"
 
 void BaseLib::Io::LoadBaseTypes(Def::TypeTable& typeTable) {
-    typeTable["print"] = std::make_shared<Arrow>(new Pod("String"), new Pod("Void"));
+    typeTable["print"] = std::make_shared<Arrow>(new Abstract("a"), new Pod("Void"));
     typeTable["readStr"] = std::make_shared<Arrow>(new Pod("Void"), new Pod("String"));
+    typeTable["readInt"] = std::make_shared<Arrow>(new Pod("Void"), new Pod("Int"));
     typeTable["readFile"] = std::make_shared<Arrow>(new Pod("String"), new Pod("String"));
     typeTable["writeFile"] = std::make_shared<Arrow>(new Pod("String"),
                                                      new Arrow(new Pod("String"), new Pod("Void")));
+    typeTable["staticReadInt"] = std::make_shared<Arrow>(new Pod("String"), new Pod("Int"));
 }
 
 std::optional<BaseLib::NativeDesc> BaseLib::Io::GetNative(const std::string& name) {
@@ -13,11 +15,12 @@ std::optional<BaseLib::NativeDesc> BaseLib::Io::GetNative(const std::string& nam
     if (name == "print") {
         return std::optional<BaseLib::NativeDesc>({ {{STDIO, RedOpType::WRITE}},
                                                     {"#include <iostream>\n"},
-                                                    {"Void print (std::tuple<String>& args) {\n"
+                                                    {"template <typename a>\n"
+                                                     "Void print (std::tuple<a>& args) {\n"
                                                     "    std::cout << std::get<0>(args).value << '\\n';\n"
                                                     "    return Void{};\n"
                                                     "}\n\n",
-                                                    std::make_unique<Arrow>(new Pod("String"), new Pod("Void")),
+                                                    std::make_unique<Arrow>(new Abstract("a"), new Pod("Void")),
                                                     1}});
     }
     if (name == "readStr") {
@@ -31,8 +34,19 @@ std::optional<BaseLib::NativeDesc> BaseLib::Io::GetNative(const std::string& nam
                                                     std::make_unique<Arrow>(new Pod("Void"), new Pod("String")),
                                                     1}});
     }
+    if (name == "readInt") {
+        return std::optional<BaseLib::NativeDesc>({ {{STDIO, RedOpType::WRITE}},
+                                                    {"#include <iostream>\n"},
+                                                    {"Int readInt (std::tuple<Void>& args) {\n"
+                                                     "    Int i;\n"
+                                                     "    std::cin >> i.value;\n"
+                                                     "    return i;\n"
+                                                     "}\n\n",
+                                                            std::make_unique<Arrow>(new Pod("Void"), new Pod("Int")),
+                                                            1}});
+    }
     if (name == "readFile") {
-        return std::optional<BaseLib::NativeDesc>({ {{"arg#1", RedOpType::READ}},
+        return std::optional<BaseLib::NativeDesc>({ {{"0%", RedOpType::READ}},
                                                     {"#include <fstream>\n"},
                                                     {"String readFile(std::tuple<String>& args) {\n"
                                                      "    std::ifstream fs(std::get<0>(args).value);\n"
@@ -45,7 +59,7 @@ std::optional<BaseLib::NativeDesc> BaseLib::Io::GetNative(const std::string& nam
                                                     1}});
     }
     if (name == "writeFile") {
-        return std::optional<BaseLib::NativeDesc>({ {{"arg#1", RedOpType::WRITE}},
+        return std::optional<BaseLib::NativeDesc>({ {{"0%", RedOpType::WRITE}},
                                                     {"#include <fstream>\n"},
                                                     {"Void writeFile(std::tuple<String, String>& args) {\n"
                                                      "    std::ofstream fs(std::get<0>(args).value);\n"
@@ -55,6 +69,18 @@ std::optional<BaseLib::NativeDesc> BaseLib::Io::GetNative(const std::string& nam
                                                     std::make_unique<Arrow>(new Pod("String"),
                                                     new Arrow(new Pod("String"), new Pod("Void"))),
                                                     2}});
+    }
+    if (name == "staticReadInt") {
+        return std::optional<BaseLib::NativeDesc>({ {{"0%", RedOpType::READ}},
+                                                    {"#include <fstream>\n"},
+                                                    {"Int staticReadInt(std::tuple<String>& args) {\n"
+                                                     "    static std::ifstream fs(std::get<0>(args).value);\n"
+                                                     "    Int i;\n"
+                                                     "    fs >> i.value;\n"
+                                                     "    return i;\n"
+                                                     "}\n",
+                                                            std::make_unique<Arrow>(new Pod("String"), new Pod("Int")),
+                                                            1}});
     }
     return std::nullopt;
 }

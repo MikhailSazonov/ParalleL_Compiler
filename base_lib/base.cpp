@@ -52,11 +52,14 @@ void BaseLib::LoadStandardTypes(Def::TypeTable& typeTable) {
 
 std::string BaseLib::GetBaseCode(std::unordered_set<std::string>& includes) {
     includes.insert("#include <tuple>\n");
+    includes.insert("#include <memory>\n");
     return "template <typename R, typename... Args>\n"
            "struct Data {\n"
            "    void* ptr;\n"
            "    R(*fun)(std::tuple<Args...>&);\n"
            "    std::tuple<Args...> args;\n"
+           "    bool heapAllocated{false};\n"
+           "    size_t refCount{0};\n"
            "};\n"
            "\n"
            "\n"
@@ -64,13 +67,32 @@ std::string BaseLib::GetBaseCode(std::unordered_set<std::string>& includes) {
            "struct Func {\n"
            "    struct ControlBlock {\n"
            "        virtual U Call(T&&) = 0;\n"
+           "\n"
+           "        virtual void Replicate() = 0;\n"
            "    };\n"
            "\n"
            "\n"
-           "using type = U;\n"
+           "    using type = U;\n"
            "\n"
            "    template <typename R, size_t idx, typename... Args>\n"
            "    struct FunctionBlock : public ControlBlock {\n"
+           "        FunctionBlock() {\n"
+           "            auto* data = GetData();\n"
+           "            if (data->heapAllocated) {\n"
+           "                ++data->refCount;\n"
+           "            }\n"
+           "        }\n"
+           "\n"
+           "        ~FunctionBlock() {\n"
+           "            auto* data = GetData();\n"
+           "            if (data->heapAllocated) {\n"
+           "                --data->refCount;\n"
+           "                if (data->refCount == 0) {\n"
+           "                    delete data;\n"
+           "                }\n"
+           "            }\n"
+           "        }\n"
+           "\n"
            "        U Call(T&& arg) {\n"
            "            auto* data = GetData();\n"
            "            std::get<idx>(data->args) = std::move(arg);\n"
@@ -83,6 +105,13 @@ std::string BaseLib::GetBaseCode(std::unordered_set<std::string>& includes) {
            "\n"
            "        Data<R, Args...>* GetData() {\n"
            "            return (Data<R, Args...>*)((void*)this);\n"
+           "        }\n"
+           "\n"
+           "        void Replicate() {\n"
+           "            auto* data = GetData();\n"
+           "            auto* newData = new Data<R, Args...>(*data);\n"
+           "            newData->heapAllocated = true;\n"
+           "            newData->refCount = 1;\n"
            "        }\n"
            "    };\n"
            "\n"
@@ -105,6 +134,11 @@ std::string BaseLib::GetBaseCode(std::unordered_set<std::string>& includes) {
            "        return *this;\n"
            "    }\n"
            "\n"
+           "    auto& Replicate() {\n"
+           "        fn->Replicate();\n"
+           "        return *this;\n"
+           "    }\n"
+           "\n"
            "    ControlBlock* fn;\n"
            "};\n"
            "\n"
@@ -116,7 +150,7 @@ std::string BaseLib::GetBaseCode(std::unordered_set<std::string>& includes) {
            "    };\n"
            "\n"
            "\n"
-           "using type = U;\n"
+           "    using type = U;\n"
            "\n"
            "    template <typename F, size_t idx, typename... Args>\n"
            "    struct FunctionBlock : public ControlBlock {\n"
@@ -148,7 +182,45 @@ std::string BaseLib::GetBaseCode(std::unordered_set<std::string>& includes) {
            "    auto& Eval() {\n"
            "        return *this;\n"
            "    }\n"
-           "};\n\n";
+           "\n"
+           "    auto& Replicate() {\n"
+           "        return *this;\n"
+           "    }\n"
+           "\n"
+           "};\n"
+           "\n"
+           "template <typename T>\n"
+           "struct PtrContainer {\n"
+           "    T* ptr{nullptr};\n"
+           "\n"
+           "    auto& Eval() {\n"
+           "        return *this;\n"
+           "    }\n"
+           "\n"
+           "    PtrContainer<T> Copy(void* newStorage) {\n"
+           "        if (!ptr) {\n"
+           "            return *this;\n"
+           "        }\n"
+           "        new(newStorage)T(Get());\n"
+           "        return PtrContainer<T>{(T*)newStorage};\n"
+           "    }\n"
+           "\n"
+           "    auto& Get() {\n"
+           "        if (ptr == nullptr) {\n"
+           "            ptr = new T();\n"
+           "        }\n"
+           "        return *ptr;\n"
+           "    }\n"
+           "\n"
+           "    auto& Replicate() {\n"
+           "        return *this;\n"
+           "    }\n"
+           "\n"
+           "    constexpr size_t Size() {\n"
+           "        return sizeof(T);\n"
+           "    }\n"
+           "};\n"
+           "\n";
 }
 
 std::string BaseLib::GetMTCode(std::unordered_set<std::string>& includes) {
@@ -377,7 +449,11 @@ std::string BaseLib::GetMTCodaCode(const std::string& counterName, const std::st
 
 std::string BaseLib::GenerateClassCode(const std::string& className,
 const std::vector<std::pair<std::string, std::string>>& classVars) {
-    std::string result = "struct %s1Gen {\n";
+    std::string result = "struct %s1Gen {\n"
+                         "    auto& Eval() {\n"
+                         "        return *this;\n"
+                         "    }\n"
+                         "\n";
     result.replace(result.find("%s1"), 3, className);
 
     std::string genTemplate =   "    %s1 %s2;\n"
@@ -386,13 +462,10 @@ const std::vector<std::pair<std::string, std::string>>& classVars) {
                                 "        return %s2;\n"
                                 "    }\n"
                                 "\n";
-    std::string getTemplateRecursive = "    std::shared_ptr<%s1Gen> %s2;\n"
+    std::string getTemplateRecursive = "    PtrContainer<%s1Gen> %s2;\n"
                                        "\n"
                                        "    auto& Get%s2() {\n"
-                                       "        if (%s2 == nullptr) {\n"
-                                       "            %s2 = std::make_shared<%s1Gen>();\n"
-                                       "        }\n"
-                                       "        return *%s2;\n"
+                                       "        return %s2;\n"
                                        "    }\n\n";
 
     for (const auto& nextField : classVars) {
@@ -411,7 +484,7 @@ const std::vector<std::pair<std::string, std::string>>& classVars) {
         }
         result += templateCopy;
     }
-    std::string coda = "};\n\ntypedef SimpleContainer<%s1Gen> %s1;\n\n";
+    std::string coda = "};\n\ntypedef PtrContainer<%s1Gen> %s1;\n\n";
     coda.replace(coda.find("%s1"), 3, className);
     coda.replace(coda.find("%s1"), 3, className);
     result += coda;
@@ -421,7 +494,11 @@ const std::vector<std::pair<std::string, std::string>>& classVars) {
 std::string BaseLib::GenerateConstCode(const std::string& constant, const std::string& type) {
     std::string result = "%s1{%s2}";
     result.replace(result.find("%s1"), 3, type);
-    result.replace(result.find("%s2"), 3, constant);
+    if (type != "Void") {
+        result.replace(result.find("%s2"), 3, constant);
+    } else {
+        result.replace(result.find("%s2"), 3, "");
+    }
     return result;
 }
 
@@ -443,4 +520,42 @@ std::string BaseLib::GenerateTemplateFromTemplate(const std::unordered_set<std::
         ++i;
     }
     return templateStr;
+}
+
+std::string BaseLib::GenerateFbipCode(const std::string& num, const std::string& src, bool first) {
+    if (first) {
+        std::string templateCode =  "        auto copy%s1 = %s2;\n";
+        templateCode.replace(templateCode.find("%s1"), 3, num);
+        templateCode.replace(templateCode.find("%s2"), 3, src);
+        return templateCode;
+    }
+    std::string templateCode = "        char storage%s1[%s2.Size()];\n"
+                               "        auto copy%s1 = %s2.Copy(&storage%s1[0]);\n";
+    templateCode.replace(templateCode.find("%s1"), 3, num);
+    templateCode.replace(templateCode.find("%s1"), 3, num);
+    templateCode.replace(templateCode.find("%s1"), 3, num);
+    templateCode.replace(templateCode.find("%s2"), 3, src);
+    templateCode.replace(templateCode.find("%s2"), 3, src);
+    return templateCode;
+}
+
+std::string BaseLib::GeneratePackedClassCode(const std::vector<std::string>& exprsCode,
+const std::vector<std::pair<std::string, std::string>>& values,
+const std::string& type, const std::string& name) {
+    std::string result;
+
+    std::string baseCode = "    %s1 %s2;\n";
+    baseCode.replace(baseCode.find("%s1"), 3, type);
+    baseCode.replace(baseCode.find("%s2"), 3, name);
+    result += baseCode;
+
+    std::string templateCode = "    %s2.Get().%s3 = %s4;\n";
+    templateCode.replace(templateCode.find("%s2"), 3, name);
+    for (size_t i = 0; i < exprsCode.size(); ++i) {
+        auto copyCode = templateCode;
+        copyCode.replace(copyCode.find("%s3"), 3, values[i].second);
+        copyCode.replace(copyCode.find("%s4"), 3, exprsCode[i]);
+        result += copyCode;
+    }
+    return result;
 }

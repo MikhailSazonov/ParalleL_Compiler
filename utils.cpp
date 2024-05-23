@@ -52,7 +52,7 @@ std::string_view RightStrip(const std::string_view src, char symb) {
 
 
 std::string_view RemoveBrackets(const std::string_view src) {
-    if (src.empty()) {
+    if (src.empty() || src == "()") {
         return src;
     }
     size_t idx = 0;
@@ -108,6 +108,10 @@ bool IsString(const std::string_view src) {
     return src.size() >= 2 && src.front() == '\"' && src.back() == '\"';
 }
 
+bool IsVoid(const std::string_view src) {
+    return src == "()";
+}
+
 bool IsNull(const std::string_view src) {
     return src == "{}";
 }
@@ -152,7 +156,7 @@ std::pair<size_t, size_t> GetNextTokenPos(const std::string_view view) {
 
 
 std::pair<size_t, size_t> GetLastTokenPos(const std::string_view view) {
-    if (view.back() == ')') {
+    if (view.back() == ')' && (view.size() >= 2 && view[view.size() - 2] != '(')) {
         size_t i = 1;
         size_t balance = i;
         for (; i < view.size() && balance > 0; ++i) {

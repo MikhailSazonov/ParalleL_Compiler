@@ -26,3 +26,25 @@ Fib x = 1 where x <= 1
 Fib x = (1! Fib (x - 1)) + (1! Fib (x - 2))
 
 main = Arc GetVal
+
+
+
+
+
+class TreeNode {
+    Int value
+    TreeNode left
+    TreeNode right
+}
+
+GetValue : TreeNode -> Int
+GetValue {} = 0
+GetValue {x l r} = x
+
+DoubleGetValue : TreeNode -> Int
+DoubleGetValue x = (GetValue x) + (GetValue x)
+
+Arc : (TreeNode -> Int) -> Void
+Arc f = print "hello world"
+
+main = Arc DoubleGetValue

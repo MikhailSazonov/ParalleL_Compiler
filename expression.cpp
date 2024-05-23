@@ -19,11 +19,18 @@ ConstExpression* CreateConstant(const std::string_view view) {
     if (IsString(view)) {
         return new ConstExpression(std::string(view), BaseLib::STRING_TYPE.first);
     }
+    if (IsVoid(view)) {
+        return new ConstExpression(std::string(view), BaseLib::VOID_TYPE.first);
+    }
+    if (IsNull(view)) {
+        return new ConstExpression(std::string(view), BaseLib::NULL_TYPE);
+    }
     throw UnexpectedSymbol{};
 }
 
 bool IsConstant(const std::string_view view) {
-    return IsBool(view) || IsNum(view) || IsChar(view) || IsFloat(view) || IsString(view) || IsNull(view);
+    return IsBool(view) || IsNum(view) || IsChar(view) || IsFloat(view) ||
+        IsString(view) || IsNull(view) || IsVoid(view);
 }
 
 bool IsAnnotation(const std::string_view view) {

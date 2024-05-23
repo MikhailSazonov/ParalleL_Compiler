@@ -62,3 +62,12 @@ std::shared_ptr<Type> ResolveAbstractTypes(std::shared_ptr<Type> absType, Def::R
     return std::make_shared<Arrow>(ResolveAbstractTypes(arr->left, resTable),
                                    ResolveAbstractTypes(arr->right, resTable));
 }
+
+std::string GetVarByNo(Type* type, size_t argNo) {
+    auto* arrType = dynamic_cast<Arrow*>(type);
+    if (argNo == 0) {
+        auto* leftArg = dynamic_cast<Pod*>(arrType->left.get());
+        return leftArg->typeName;
+    }
+    return GetVarByNo(arrType->right.get(), argNo - 1);
+}

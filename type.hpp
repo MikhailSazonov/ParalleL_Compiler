@@ -32,7 +32,7 @@ struct Type {
 };
 
 struct Pod : public Type {
-    const std::string typeName;
+    std::string typeName;
 
     Pod(const std::string& name) : Type(TermType::POD), typeName(name) {}
 
@@ -77,3 +77,5 @@ std::shared_ptr<Type> ResolveAbstractTypes(std::shared_ptr<Type>, Def::ResolveTa
 void GatherAbstractTypes(Type*, std::unordered_set<std::string>&);
 
 bool HasAbststractTypes(Type*);
+
+std::string GetVarByNo(Type*, size_t);

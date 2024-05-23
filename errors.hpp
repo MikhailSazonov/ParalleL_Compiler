@@ -142,3 +142,30 @@ public:
         return "Abstract type mismatch.";
     }
 };
+
+class DataRaceError : public ParalleLCompilerError {
+protected:
+    const std::string err;
+
+    DataRaceError(const std::string& err)
+        : err(err) {}
+
+public:
+    const char *what() const noexcept {
+        return err.data();
+    }
+};
+
+class DataRaceButNotRacing : public DataRaceError {
+    public:
+        DataRaceButNotRacing(const std::string& name)
+            : DataRaceError("Logical data race detected, but func " + name + " is not \"racing.\"")
+            {}
+};
+
+class CertainDataRace : public DataRaceError {
+public:
+    CertainDataRace(const std::string& name)
+            : DataRaceError("Data race detected for func " + name + ".")
+    {}
+};

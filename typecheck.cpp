@@ -7,6 +7,10 @@
 
 std::shared_ptr<Type> GetTermType(const Def::TypeTable& typesTable, const Expression& expr,
 const AnnotatedExpression& annExpr, Def::ResolveTable** resolveTable) {
+    if (expr.type == ExpressionType::PACKED) {
+        const auto& packedExpr = (const PackedExpression&)expr;
+        return packedExpr.correspondingType;
+    }
     if (expr.type == ExpressionType::LITERAL) {
         const auto& constExp = (const ConstExpression&)expr;
         return constExp.correspondingType;
@@ -61,7 +65,16 @@ const AnnotatedExpression& annExpr, Def::ResolveTable** resolveTable) {
 //            }
 //        }
     } else if (*fun->left != *rightType) {
-        throw TypeMismatchError{};
+        if (rightType->type == TermType::POD && dynamic_cast<Pod*>(rightType.get())->typeName == "Null") {
+            auto* podType = dynamic_cast<Pod*>(rightType.get());
+            auto* leftPodType = dynamic_cast<Pod*>(fun->left.get());
+            if (leftPodType == nullptr) {
+                throw TypeMismatchError{};
+            }
+            podType->typeName = leftPodType->typeName;
+        } else {
+            throw TypeMismatchError{};
+        }
     }
     if (fun->right->type == TermType::ABSTRACT) {
         auto* abs = dynamic_cast<Abstract*>(fun->left.get());

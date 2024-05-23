@@ -195,9 +195,9 @@ std::optional<BaseLib::NativeDesc> BaseLib::Ops::GetNative(const std::string& na
     if (name == "isNull") {
         return std::optional<BaseLib::NativeDesc>({ {},
                                                     {},
-                                                    {"template <typename a>"
+                                                    {"template <typename a>\n"
                                                      "Bool isNull (std::tuple<a>& args) {\n"
-                                                     "    return {std::get<0>(args).value == nullptr};\n"
+                                                     "    return {std::get<0>(args).ptr == nullptr};\n"
                                                      "}\n\n",
                                                             std::make_unique<Arrow>(new Abstract("a"),
                                                                                     new Pod("Bool")
