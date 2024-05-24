@@ -6,7 +6,8 @@ class TreeNode {
 
 TraverseTree : TreeNode -> Int
 TraverseTree {} = 0
-TraverseTree {x l r} = x + (1! TraverseTree l) + (1! TraverseTree r)
+TraverseTree {x l r} = 1 + (TraverseTree l) + (TraverseTree r) where (isNull l) ^ (isNull r)
+TraverseTree {x l r} = 0 + (TraverseTree l) + (TraverseTree r)
 
 Append : Int -> TreeNode -> TreeNode
 Append x {} = {x ; {} ; {}}
@@ -19,6 +20,6 @@ MakeTree : Int -> TreeNode -> TreeNode
 MakeTree 0 t = t
 MakeTree x t = ReadTree (Append x t)
 
-ReadTree t = MakeTree (staticReadInt "C:\\Users\\godot\\CLionProjects\\untitled3\\a.txt") t
+ReadTree t = MakeTree (readInt ()) t
 
 main = print (TraverseTree (ReadTree {}))

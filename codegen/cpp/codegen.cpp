@@ -222,14 +222,14 @@ void CppCodegen::GenerateFunc(const std::string& name,
             auto checkExpr = GenerateExpr2(*def.cond, funcTable, typeTable, classTable, needForMT, retIdx, name);
             resultingExpr += checkExpr.first;
             startingDatasIdx += datas.size();
-            resultingExpr += "if (" + checkExpr.second += ".value) {\n\t\t";
+            resultingExpr += "if (" + checkExpr.second += ".value) {\n";
         }
         auto* expr = def.annExpr.get();
         std::vector<std::string> datas;
         auto valExpr = GenerateExpr2(*expr, funcTable, typeTable, classTable, needForMT, retIdx, name);
         resultingExpr += valExpr.first;
         if (name != "main") {
-            resultingExpr += "\treturn " + valExpr.second + ".Replicate();\n";
+            resultingExpr += "return " + valExpr.second + ".Replicate();\n";
         }
         result += resultingExpr + "}\n}\n";
     }

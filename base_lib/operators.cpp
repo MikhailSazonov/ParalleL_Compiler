@@ -31,6 +31,12 @@ std::string BaseLib::Ops::GetOperator(const std::string_view src) {
         return "isNull";
     } else if (src == ">>") {
         return "seq";
+    } else if (src == "||") {
+        return "or";
+    } else if (src == "&&") {
+        return "and";
+    } else if (src == "^") {
+        return "Xor";
     }
     return "";
 }
@@ -217,6 +223,46 @@ std::optional<BaseLib::NativeDesc> BaseLib::Ops::GetNative(const std::string& na
                                                             ),
                                                             2}});
     }
+    if (name == "or") {
+        return std::optional<BaseLib::NativeDesc>({ {},
+                                                    {},
+                                                    {"Bool or (std::tuple<Bool, Bool>& args) {\n"
+                                                     "    return {std::get<0>(args).value || std::get<1>(args).value};\n"
+                                                     "}\n\n",
+                                                            std::make_unique<Arrow>(new Pod("Bool"),
+                                                                                    new Arrow(
+                                                                                            new Pod("Bool"),
+                                                                                            new Pod("Bool")
+                                                                                    )),
+                                                            2}});
+    }
+    if (name == "and") {
+        return std::optional<BaseLib::NativeDesc>({ {},
+                                                    {},
+                                                    {"Bool and (std::tuple<Bool, Bool>& args) {\n"
+                                                     "    return {std::get<0>(args).value && std::get<1>(args).value};\n"
+                                                     "}\n\n",
+                                                            std::make_unique<Arrow>(new Pod("Bool"),
+                                                                                    new Arrow(
+                                                                                            new Pod("Bool"),
+                                                                                            new Pod("Bool")
+                                                                                    )),
+                                                            2}});
+    }
+    if (name == "Xor") {
+        return std::optional<BaseLib::NativeDesc>({ {},
+                                                    {},
+                                                    {"Bool Xor (std::tuple<Bool, Bool>& args) {\n"
+                                                     "    return {std::get<0>(args).value && !std::get<1>(args).value ||\n"
+                                                     "        !std::get<0>(args).value && std::get<1>(args).value};\n"
+                                                     "}\n\n",
+                                                            std::make_unique<Arrow>(new Pod("Bool"),
+                                                                                    new Arrow(
+                                                                                            new Pod("Bool"),
+                                                                                            new Pod("Bool")
+                                                                                    )),
+                                                            2}});
+    }
     return std::nullopt;
 }
 
@@ -248,4 +294,10 @@ void BaseLib::Ops::LoadBaseTypes(Def::TypeTable& typeTable) {
                 new Abstract("b"), new Pod("Void")
             ));
     typeTable["isNull"] = std::make_shared<Arrow>(new Abstract("a"), new Pod("Bool"));
+    typeTable["or"] = std::make_shared<Arrow>(new Pod("Bool"), new Arrow(new Pod("Bool"),
+                                                                         new Pod("Bool")));
+    typeTable["and"] = std::make_shared<Arrow>(new Pod("Bool"), new Arrow(new Pod("Bool"),
+                                                                         new Pod("Bool")));
+    typeTable["Xor"] = std::make_shared<Arrow>(new Pod("Bool"), new Arrow(new Pod("Bool"),
+                                                                          new Pod("Bool")));
 }
