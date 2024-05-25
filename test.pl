@@ -6,8 +6,7 @@ class TreeNode {
 
 TraverseTree : TreeNode -> Int
 TraverseTree {} = 0
-TraverseTree {x l r} = 1 + (TraverseTree l) + (TraverseTree r) where (isNull l) ^ (isNull r)
-TraverseTree {x l r} = 0 + (TraverseTree l) + (TraverseTree r)
+TraverseTree {x l r} = x + (1! TraverseTree l) + (1! TraverseTree r)
 
 Append : Int -> TreeNode -> TreeNode
 Append x {} = {x ; {} ; {}}

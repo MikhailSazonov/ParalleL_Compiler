@@ -230,6 +230,8 @@ void CppCodegen::GenerateFunc(const std::string& name,
         resultingExpr += valExpr.first;
         if (name != "main") {
             resultingExpr += "return " + valExpr.second + ".Replicate();\n";
+        } else if (needForMT) {
+            resultingExpr += "tp.Stop();\n";
         }
         result += resultingExpr + "}\n}\n";
     }
