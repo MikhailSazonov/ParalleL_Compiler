@@ -9,6 +9,10 @@
 
 #include <fstream>
 
+#ifdef __linux__
+#include <stdlib.h>
+#endif
+
 
 static bool ClassContainerContains(const std::string& className, CppCodegen::ClassListOrdered& classList) {
     return std::any_of(classList.begin(), classList.end(), [&className](std::pair<std::string, std::string>& elem) {
@@ -25,6 +29,9 @@ Def::TypeTable& typeTable, Def::ClassTable& classTable, bool skipIntermediate) {
     bool needForMT = false;
     GenerateFunc("main", funcTable, typeTable, classTable, needForMT);
     Print(genFile, needForMT);
+    #ifdef __linux__
+    system("g++ a.cpp");
+    #endif
 }
 
 bool CppCodegen::TypedefCreated(std::shared_ptr<Type>& type) {
