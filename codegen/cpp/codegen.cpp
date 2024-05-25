@@ -29,6 +29,7 @@ Def::TypeTable& typeTable, Def::ClassTable& classTable, bool skipIntermediate) {
     bool needForMT = false;
     GenerateFunc("main", funcTable, typeTable, classTable, needForMT);
     Print(genFile, needForMT);
+    genFile.close();
     #ifdef __linux__
     system("g++ a.cpp");
     #endif
