@@ -10,16 +10,16 @@
 
 std::unique_ptr<AnnotatedExpression> BuildExpression(const std::string_view view,
 const std::unordered_map<std::string, std::string>& varPos,
-Def::TypeTable& typeTable) {
+Def::TypeTable& typeTable, Def::ColorTable& colorTable, Color& color) {
     std::unique_ptr<AnnotatedExpression> expr(new AnnotatedExpression());
-    (*expr)[(size_t)-1].push_back(BuildExpressionImpl(view, varPos, *expr, typeTable, view));
+    (*expr)[(size_t)-1].push_back(BuildExpressionImpl(view, varPos, *expr, typeTable, colorTable, view, color));
     return expr;
 }
 
 std::unique_ptr<Expression> BuildExpressionImpl(const std::string_view view,
 const std::unordered_map<std::string, std::string>& varPos,
-AnnotatedExpression& expr, Def::TypeTable& typeTable,
-const std::string_view basicLine) {
+AnnotatedExpression& expr, Def::TypeTable& typeTable, Def::ColorTable& colorTable,
+const std::string_view basicLine, Color& color) {
     std::string_view stripped = RemoveBrackets(Strip(view));
 
     if (IsConstant(stripped)) {
@@ -31,10 +31,13 @@ const std::string_view basicLine) {
         if (varPos.contains(varName)) {
             return std::make_unique<VarExpression>(varPos.at(varName));
         }
+        if (colorTable.contains(varName) && color == Color::BLUE) {
+            color = colorTable[varName];
+        }
         if (typeTable.contains(varName) && HasAbststractTypes(typeTable[varName].get())) {
             return std::make_unique<AbstractVarExpression>(varName);
         }
-        return std::make_unique<VarExpression>(varName);
+        return std::make_unique<VarExpression>(varName, color);
     }
 
     auto next_token_pos = GetLastTokenPos(stripped);
@@ -46,9 +49,9 @@ const std::string_view basicLine) {
     // TODO: arithmetic operations order
     std::string op;
     if (!(op = BaseLib::Ops::GetOperator(next_token)).empty()) {
-        return std::make_unique<AppExpression>(BuildExpressionImpl({&op[0]}, varPos, expr, typeTable, basicLine).release(),
-                                               BuildExpressionImpl(rest, varPos, expr, typeTable,
-                                                                   {&basicLine[next_token_pos.first]}).release());
+        return std::make_unique<AppExpression>(BuildExpressionImpl({&op[0]}, varPos, expr, typeTable, colorTable, basicLine, color).release(),
+                                               BuildExpressionImpl(rest, varPos, expr, typeTable, colorTable,
+                                                                   {&basicLine[next_token_pos.first]}, color).release());
     }
 
     auto first_token_pos = GetNextTokenPos(stripped);
@@ -60,14 +63,19 @@ const std::string_view basicLine) {
         size_t annotatedArgNum = expr[annotNumInt].size();
         expr[annotNumInt].push_back(nullptr);
         expr[annotNumInt][annotatedArgNum] = BuildExpressionImpl({&stripped[first_token_pos.second],
-                                   stripped.size() - (first_token_pos.second)}, varPos, expr, typeTable, basicLine);
+                                   stripped.size() - (first_token_pos.second)}, varPos, expr, typeTable, colorTable,
+                                                                 basicLine, color);
         return std::make_unique<VarExpression>(std::string(annotNum) + Def::ANNOT_DELIM_SYMBOL +
                             std::to_string(annotatedArgNum));
     }
 
-    return std::make_unique<AppExpression>(BuildExpressionImpl(rest, varPos, expr, typeTable, basicLine).release(),
-                                           BuildExpressionImpl(next_token, varPos, expr, typeTable,
-                                                               {&basicLine[next_token_pos.first]}).release());
+    auto fun = BuildExpressionImpl(rest, varPos, expr, typeTable, colorTable,
+                                   basicLine, color);
+    auto funColor = fun->color;
+    return std::make_unique<AppExpression>(fun.release(),
+                                           BuildExpressionImpl(next_token, varPos, expr, typeTable, colorTable,
+                                                               {&basicLine[next_token_pos.first]}, color).release(),
+                                           funColor);
 }
 
 

@@ -19,8 +19,10 @@ int main(int argc, char** argv) {
     Def::FuncTable funcTable;
     Def::AnnTable annTable;
     Def::ClassTable classTable;
+    Def::ColorTable colorTable;
     BaseLib::LoadBaseTypes(typeTable);
-    if (Parse(typeTable, funcTable, annTable, classTable, std::string(argv[1])) != 0) {
+    BaseLib::LoadBaseColors(colorTable);
+    if (Parse(typeTable, funcTable, annTable, classTable, colorTable, std::string(argv[1])) != 0) {
         return 1;
     }
     if (!funcTable.contains(Def::MAIN_NAME)) {

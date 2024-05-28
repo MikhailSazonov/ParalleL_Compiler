@@ -10,6 +10,15 @@ void BaseLib::Io::LoadBaseTypes(Def::TypeTable& typeTable) {
     typeTable["staticReadInt"] = std::make_shared<Arrow>(new Pod("String"), new Pod("Int"));
 }
 
+void BaseLib::Io::LoadBaseColors(Def::ColorTable& colorTable) {
+    colorTable["print"] = Color::RED;
+    colorTable["readStr"] = Color::RED;
+    colorTable["readInt"] = Color::RED;
+    colorTable["readFile"] = Color::RED;
+    colorTable["writeFile"] = Color::RED;
+    colorTable["staticReadInt"] = Color::RED;
+}
+
 std::optional<BaseLib::NativeDesc> BaseLib::Io::GetNative(const std::string& name) {
     static const std::string STDIO = "stdio";
     if (name == "print") {

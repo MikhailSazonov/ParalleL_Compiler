@@ -30,6 +30,7 @@ namespace Def {
     const std::string PACKED_GENERATED = "pack_";
 
     typedef std::unordered_map<std::string, std::shared_ptr<Type>> TypeTable;
+    typedef std::unordered_map<std::string, Color> ColorTable;
     typedef std::unordered_map<std::string, std::vector<FuncDef>> FuncTable;
     typedef std::unordered_map<std::string, Annotation> AnnTable;
 }

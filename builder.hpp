@@ -12,13 +12,14 @@ void SyntaxError();
 
 std::unique_ptr<AnnotatedExpression> BuildExpression(const std::string_view,
                                    const std::unordered_map<std::string, std::string>&,
-                                   Def::TypeTable&);
+                                   Def::TypeTable&, Def::ColorTable&, Color&);
 
 std::unique_ptr<Expression> BuildExpressionImpl(const std::string_view,
                                        const std::unordered_map<std::string, std::string>&,
                                        AnnotatedExpression&,
-                                       Def::TypeTable&,
-                                       const std::string_view);
+                                       Def::TypeTable&, Def::ColorTable&,
+                                       const std::string_view,
+                                       Color&);
 
 std::unique_ptr<Type> BuildType(const std::string_view, const Def::ClassTable&);
 

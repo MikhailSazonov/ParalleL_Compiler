@@ -60,6 +60,8 @@ namespace BaseLib {
 
     void LoadBaseTypes(Def::TypeTable&);
 
+    void LoadBaseColors(Def::ColorTable&);
+
     void LoadStandardTypes(Def::TypeTable&);
 
     std::string GetBaseCode(std::unordered_set<std::string>&);

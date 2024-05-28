@@ -44,6 +44,10 @@ void BaseLib::LoadBaseTypes(Def::TypeTable& typeTable) {
     BaseLib::Alg::LoadBaseTypes(typeTable);
 }
 
+void BaseLib::LoadBaseColors(Def::ColorTable& colorTable) {
+    BaseLib::Io::LoadBaseColors(colorTable);
+}
+
 void BaseLib::LoadStandardTypes(Def::TypeTable& typeTable) {
     for (const auto& [typeName, _] : BASE_TYPES) {
         typeTable[typeName] = std::make_shared<Pod>(typeName);

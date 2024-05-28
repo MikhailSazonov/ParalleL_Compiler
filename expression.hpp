@@ -16,18 +16,28 @@ enum class ExpressionType {
     PACKED
 };
 
+enum class Color {
+    BLUE,
+    RED
+};
+
 struct Expression {
     const ExpressionType type;
+    Color color{Color::BLUE};
 
     virtual ~Expression() = default;
 
     Expression(ExpressionType type) : type(type) {}
+
+    Expression(ExpressionType type, Color color) : type(type), color(color) {}
 };
 
 struct VarExpression : public Expression {
     std::string name;
 
     VarExpression(std::string name) : Expression(ExpressionType::VAR), name(std::move(name)) {}
+
+    VarExpression(std::string name, Color color) : Expression(ExpressionType::VAR, color), name(std::move(name)) {}
 };
 
 struct AbstractVarExpression : public Expression {
@@ -64,11 +74,19 @@ struct AppExpression : Expression {
 
     AppExpression() : Expression(ExpressionType::APP) {}
 
+
     AppExpression(Expression* fun, Expression* arg)
         :
           Expression(ExpressionType::APP)
         , fun(fun)
         , arg(arg)
+    {}
+
+    AppExpression(Expression* fun, Expression* arg, Color color)
+            :
+            Expression(ExpressionType::APP, color)
+            , fun(fun)
+            , arg(arg)
     {}
 };
 

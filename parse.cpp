@@ -4,6 +4,7 @@
 #include "builder.hpp"
 #include "typecheck.hpp"
 #include "definitions.hpp"
+#include "datarace.hpp"
 
 #include "base_lib/base.hpp"
 
@@ -15,6 +16,7 @@ int Parse(Def::TypeTable& typeTable,
           Def::FuncTable& defTable,
           Def::AnnTable& annTable,
           Def::ClassTable& classTable,
+          Def::ColorTable& colorTable,
           const std::string& fileName) {
     if (!fileName.ends_with(Def::FILE_EXT)) {
         throw FileWrongFormat{};
@@ -28,7 +30,7 @@ int Parse(Def::TypeTable& typeTable,
     std::unordered_set<std::string> racingFuns;
     while (std::getline(file, line)) {
         try {
-            Analyze(typeTable, defTable, annTable, classTable, line, false, racingFuns);
+            Analyze(typeTable, defTable, annTable, classTable, colorTable, line, false, racingFuns);
             ++lineNo;
         } catch (const ParalleLCompilerError& er) {
             std::cerr << "Error on line " << lineNo << ": " << er.what() << '\n';
@@ -45,12 +47,14 @@ void Analyze(Def::TypeTable& typeTable,
              Def::FuncTable& defTable,
              Def::AnnTable& annTable,
              Def::ClassTable& classTable,
+             Def::ColorTable& colorTable,
              const std::string& line,
              bool desugared,
              std::unordered_set<std::string>& racingFuns) {
     if (line.empty() || line.starts_with("%%")) {
         return;
     }
+    Color color;
     auto lineView = Strip(line);
     size_t idx = 0;
     auto name = Strip(GetToken(lineView, idx));
@@ -176,7 +180,7 @@ void Analyze(Def::TypeTable& typeTable,
             } else {
                 lineCopy += " where " + Def::GEN_NAME + " == " + tokenString;
             }
-            Analyze(typeTable, defTable, annTable, classTable, lineCopy, true, racingFuns);
+            Analyze(typeTable, defTable, annTable, classTable, colorTable, lineCopy, true, racingFuns);
             return;
         }
         if (next_token != "=") {
@@ -190,9 +194,12 @@ void Analyze(Def::TypeTable& typeTable,
         CheckExprSyntax(expr);
         std::unique_ptr<AnnotatedExpression> typedExpr;
         if (expr[0] == '{') {
-            typedExpr = GeneratePackedExpr(expr, argsMapping, typeTable, typeTable.at(funName));
+            typedExpr = GeneratePackedExpr(expr, argsMapping, typeTable, colorTable, color, typeTable.at(funName));
         } else {
-            typedExpr = BuildExpression(expr, argsMapping, typeTable);
+            typedExpr = BuildExpression(expr, argsMapping, typeTable, colorTable, color);
+        }
+        if (!racingFuns.contains(std::string(name))) {
+            DataRace::CheckForColors(colorTable, *typedExpr);
         }
         // support syntactic sugar : x = 5 (no type presented)
         if ((*typedExpr)[(size_t)-1].back()->type == ExpressionType::LITERAL &&
@@ -209,10 +216,14 @@ void Analyze(Def::TypeTable& typeTable,
         }
         std::unique_ptr<AnnotatedExpression> cond;
         if (whereKeyword != std::string::npos) {
-            cond = BuildExpression({&lineView[whereKeyword + Def::WHERE_KEYWORD.size()]}, argsMapping, typeTable);
+            cond = BuildExpression({&lineView[whereKeyword + Def::WHERE_KEYWORD.size()]}, argsMapping, typeTable,
+                                   colorTable, color);
             Def::ResolveTable* tablePtr = nullptr;
             if (*GetTermType(typeTable, *(*cond)[(size_t)-1].back(), *cond, &tablePtr) != Pod("Bool")) {
                 throw TypeMismatchError{};
+            }
+            if (!racingFuns.contains(std::string(name))) {
+                DataRace::CheckForColors(colorTable, *cond);
             }
         }
         if (!defTable[std::string(name)].empty() && defTable[std::string(name)].back().cond == nullptr) {
@@ -220,6 +231,9 @@ void Analyze(Def::TypeTable& typeTable,
         }
         defTable[std::string(name)].push_back({std::move(cond), std::move(typedExpr), currentArgN,
                                                racingFuns.contains(std::string(name))});
+        if (!colorTable.contains(std::string(name)) || colorTable[std::string(name)] == Color::BLUE) {
+            colorTable[std::string(name)] = color;
+        }
         ClearLocalVars(typeTable);
         return;
     }
@@ -401,6 +415,8 @@ static std::shared_ptr<Type> GetLastFunType(std::shared_ptr<Type> funType) {
 std::unique_ptr<AnnotatedExpression> GeneratePackedExpr(const std::string_view line,
                                                const std::unordered_map<std::string, std::string>& varPos,
                                                Def::TypeTable& typeTable,
+                                               Def::ColorTable& colorTable,
+                                               Color& color,
                                                std::shared_ptr<Type>& funType) {
     std::string_view next_token;
     size_t prev_pos = 1;
@@ -416,7 +432,7 @@ std::unique_ptr<AnnotatedExpression> GeneratePackedExpr(const std::string_view l
             next_token = line.substr(prev_pos, pos - prev_pos);
             prev_pos = pos + 1;
 
-            expr->exprs.push_back(BuildExpression(next_token, varPos, typeTable));
+            expr->exprs.push_back(BuildExpression(next_token, varPos, typeTable, colorTable, color));
             if (pos == line.size() - 1) {
                 break;
             }

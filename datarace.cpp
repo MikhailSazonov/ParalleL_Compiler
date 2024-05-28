@@ -114,3 +114,19 @@ std::string DataRace::GetFunName(const Expression* expr) {
     auto* varExpr = (const VarExpression*)expr;
     return varExpr->name;
 }
+
+
+void DataRace::CheckForColors(const Def::ColorTable& colorTable, const AnnotatedExpression& annExpr) {
+    for (const auto& [_, exprs] : annExpr) {
+        Color color = Color::BLUE;
+        for (const auto& expr : exprs) {
+            if (expr->color == Color::RED) {
+                if (color == Color::RED) {
+                    throw ColorDataRace{};
+                } else {
+                    color = Color::RED;
+                }
+            }
+        }
+    }
+}

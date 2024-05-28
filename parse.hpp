@@ -11,10 +11,12 @@
 
 void Analyze(Def::TypeTable&, Def::FuncTable&,
              Def::AnnTable&, Def::ClassTable&,
+             Def::ColorTable&,
              const std::string&, bool,
              std::unordered_set<std::string>&);
 
-int Parse(Def::TypeTable&, Def::FuncTable&, Def::AnnTable&, Def::ClassTable&, const std::string&);
+int Parse(Def::TypeTable&, Def::FuncTable&, Def::AnnTable&, Def::ClassTable&,
+          Def::ColorTable&, const std::string&);
 
 void AddAnnotation(Def::AnnTable&, const std::string_view);
 
@@ -34,4 +36,6 @@ void ClearLocalVars(Def::TypeTable&);
 std::unique_ptr<AnnotatedExpression> GeneratePackedExpr(const std::string_view,
                                                const std::unordered_map<std::string, std::string>&,
                                                Def::TypeTable&,
+                                               Def::ColorTable&,
+                                               Color&,
                                                std::shared_ptr<Type>&);

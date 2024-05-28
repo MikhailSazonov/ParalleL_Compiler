@@ -68,4 +68,8 @@ namespace DataRace {
                     bool, const std::string&);
 
     std::string GetFunName(const Expression*);
+
+
+    // COLORS
+    void CheckForColors(const Def::ColorTable&, const AnnotatedExpression&);
 }

@@ -169,3 +169,9 @@ public:
             : DataRaceError("Data race detected for func " + name + ".")
     {}
 };
+
+class ColorDataRace : public ParalleLCompilerError {
+    const char *what() const noexcept {
+        return "Functions color are ill-formed.";
+    }
+};
